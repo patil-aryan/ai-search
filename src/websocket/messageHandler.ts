@@ -5,6 +5,8 @@ import handleAcademicSearch from "../agents/academicSearchAgent";
 import handleWritingAssistant from "../agents/writingAssistant";
 import handleYoutubeSearch from "../agents/youtubeSearchAgent";
 import handleRedditSearch from "../agents/redditSearchAgent";
+import handleImageSearch from "../agents/imageSearchAgent";
+import handleVideoSearch from "../agents/videoSearchAgent";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { Embeddings } from "@langchain/core/embeddings";
 import { getChatModelProvider } from "../config"; // Added import
@@ -24,6 +26,17 @@ const searchHandlers = {
   writingAssistant: handleWritingAssistant,
   youtubeSearch: handleYoutubeSearch,
   redditSearch: handleRedditSearch,
+  imageSearch: handleImageSearch,
+  videoSearch: handleVideoSearch,
+  all: handleWebSearch,
+  academic: handleAcademicSearch,
+  news: handleWebSearch,
+  videos: handleYoutubeSearch,
+  images: handleImageSearch,
+  code: handleWebSearch,
+  reddit: handleRedditSearch,
+  youtube: handleYoutubeSearch,
+  writing: handleWritingAssistant,
 };
 
 const handleEmitterEvents = (
@@ -76,10 +89,7 @@ export const handleMessage = async (
       );
     }
 
-    // const chatModelProvider = getChatModelProvider(); // This check is no longer needed here as llm is pre-configured
-
     if (paresedMessage.type === "message") {
-      // Unified logic for all providers
       const history: BaseMessage[] = paresedMessage.history.map((msg) => {
         if (msg[0] === "human") {
           return new HumanMessage({
@@ -92,19 +102,37 @@ export const handleMessage = async (
         }
       });
 
+      // Enhanced content processing for specific focus modes
+      let processedContent = paresedMessage.content;
+      if (paresedMessage.focusMode === "code") {
+        processedContent = `Code help: ${paresedMessage.content}. Please provide code examples with proper syntax highlighting and explanations.`;
+      } else if (paresedMessage.focusMode === "youtube" || paresedMessage.focusMode === "videos") {
+        processedContent = `Find videos about: ${paresedMessage.content}`;
+      } else if (paresedMessage.focusMode === "reddit") {
+        processedContent = `Search Reddit discussions about: ${paresedMessage.content}`;
+      } else if (paresedMessage.focusMode === "writing") {
+        processedContent = `Writing assistance for: ${paresedMessage.content}`;
+      }
+
       const handler = searchHandlers[paresedMessage.focusMode];
       if (handler) {
+        console.log(`[MessageHandler] Using ${paresedMessage.focusMode} agent for query: "${processedContent}"`);
         const emitter = handler(
-          paresedMessage.content,
+          processedContent,
           history,
-          llm, // llm is already correctly instantiated with Gemini if configured
-          embeddings // embeddings is also correctly instantiated
+          llm,
+          embeddings
         );
         handleEmitterEvents(emitter, ws, id);
       } else {
-        ws.send(
-          JSON.stringify({ type: "error", data: "Invalid focus mode" })
+        console.warn(`Unknown focus mode: ${paresedMessage.focusMode}, falling back to web search`);
+        const emitter = handleWebSearch(
+          processedContent,
+          history,
+          llm,
+          embeddings
         );
+        handleEmitterEvents(emitter, ws, id);
       }
     }
   } catch (error) {

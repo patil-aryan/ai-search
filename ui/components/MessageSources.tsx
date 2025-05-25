@@ -58,7 +58,7 @@ const MessageSources = ({ sources }: { sources: Document[] }) => {
         <button
           onClick={openModal}
           className="
-      bg-[#111111] hover:bg-[#1c1c1c] transition duration-200 rounded-lg px-4 py-2 flex flex-col justify-between space-y-2"
+      bg-gradient-to-br from-[#1a1f2e] to-[#181c24] hover:from-[#23272f] hover:to-[#1f242e] transition-all duration-200 rounded-lg px-4 py-2 flex flex-col justify-between space-y-2 border border-[#23272f]/50 hover:border-[#24A0ED]/20"
         >
           <div className="flex flex-row items-center space-x-1">
             {sources.slice(3, 6).map((source, i) => (
@@ -89,10 +89,9 @@ const MessageSources = ({ sources }: { sources: Document[] }) => {
                 leave="ease-in duration-100"
                 leaveFrom="opacity-100 scale-200"
                 leaveTo="opacity-0 scale-95"
-              >
-                <Dialog.Panel
+              >                <Dialog.Panel
                   className={
-                    "w-full max-w-md transform rounded-2xl bg-[#111111] border border-[#1c1c1c] p-6 text-left align-middle shadow-xl transition-all"
+                    "w-full max-w-md transform rounded-2xl bg-gradient-to-br from-[#181c24] to-[#1a1f2e] border border-[#23272f] p-6 text-left align-middle shadow-2xl backdrop-blur-sm transition-all"
                   }
                 >
                   <Dialog.Title
@@ -106,7 +105,7 @@ const MessageSources = ({ sources }: { sources: Document[] }) => {
                         href={source.metadata.url}
                         key={i}
                         target="_blank"
-                        className="bg-[#111111] hover:bg-[#1c1c1c] transition duration-200 rounded-lg p-3 flex flex-col space-y-2 font-medium"
+                        className="bg-gradient-to-br from-[#1a1f2e] to-[#181c24] hover:from-[#23272f] hover:to-[#1f242e] transition-all duration-200 rounded-lg p-3 flex flex-col space-y-2 font-medium border border-[#23272f]/50 hover:border-[#24A0ED]/20"
                       >
                         <p className="text-white text-xs overflow-hidden whitespace-nowrap text-ellipsis">
                           {source.metadata.title}

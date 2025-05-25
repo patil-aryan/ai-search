@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { Attach, CopilotToggle } from "./MessageInputActions";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Search } from "lucide-react";
 
 const MessageInput = ({
   sendMessage,
@@ -41,50 +41,59 @@ const MessageInput = ({
         }
       }}
       className={cn(
-        "bg-[#111111] p-4 flex items-center overflow-hidden border border-[#1C1C1C]",
-        mode === "multi" ? "flex-col rounded-lg" : "flex-row rounded-full"
+        "bg-white border border-gray-300 rounded-md overflow-hidden hover:shadow-md transition-shadow duration-200",
+        mode === "multi" ? "flex-col p-4 rounded-lg shadow-lg" : "flex-row p-3 shadow-sm"
       )}
     >
-      {mode === "single" && <Attach />}
+      {mode === "single" && (
+        <div className="flex items-center mr-3">
+          <Search className="w-5 h-5 text-gray-400" />
+        </div>
+      )}
       <TextareaAutosize
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onHeightChange={(height, props) => {
           setTextareaRows(Math.ceil(height / props.rowHeight));
         }}
-        className="transition bg-transparent placeholder:text-white/50 placeholder:text-sm text-sm text-white resize-none focus:outline-none w-full max-h-24 lg:max-h-36 xl:max-h-48 flex-grow flex-shrink"
-        placeholder="Ask a follow up"
+        className="bg-transparent placeholder:text-gray-400 text-gray-900 resize-none focus:outline-none w-full max-h-24 lg:max-h-36 xl:max-h-48 flex-grow flex-shrink text-base"
+        placeholder="Ask a follow up..."
       />
       {mode === "single" && (
-        <div className="flex flex-row items-center space-x-4">
+        <div className="flex flex-row items-center space-x-3 ml-3">
           <CopilotToggle
             copilotEnabled={copilotEnabled}
             setCopilotEnabled={setCopilotEnabled}
           />
           <button
             disabled={message.trim().length === 0 || loading}
-            className="bg-[#24A0ED] text-white disabled:text-white/50 hover:bg-opacity-85 transition duration-100 disabled:bg-[#ececec21] rounded-full p-2"
+            className="bg-gray-900 text-white disabled:text-gray-400 hover:bg-gray-800 transition-colors duration-200 disabled:bg-gray-200 rounded-md p-2"
           >
-            <ArrowUp size={17} />
+            <ArrowUp size={18} />
           </button>
         </div>
       )}
       {mode === "multi" && (
-        <div className="flex flex-row items-center justify-between w-full pt-2">
-          <Attach />
-          <div className="flex flex-row items-center space-x-4">
-            <CopilotToggle
-              copilotEnabled={copilotEnabled}
-              setCopilotEnabled={setCopilotEnabled}
-            />
+        <>
+          <div className="flex items-center mb-3">
+            <Search className="w-5 h-5 text-gray-400 mr-3" />
+            <Attach />
+          </div>
+          <div className="flex flex-row items-center justify-between w-full pt-2 border-t border-gray-200">
+            <div className="flex flex-row items-center space-x-3">
+              <CopilotToggle
+                copilotEnabled={copilotEnabled}
+                setCopilotEnabled={setCopilotEnabled}
+              />
+            </div>
             <button
               disabled={message.trim().length === 0 || loading}
-              className="bg-[#24A0ED] text-white disabled:text-white/50 hover:bg-opacity-85 transition duration-100 disabled:bg-[#ececec21] rounded-full p-2"
+              className="bg-gray-900 text-white disabled:text-gray-400 hover:bg-gray-800 transition-colors duration-200 disabled:bg-gray-200 rounded-md p-2"
             >
-              <ArrowUp size={17} />
+              <ArrowUp size={18} />
             </button>
           </div>
-        </div>
+        </>
       )}
     </form>
   );

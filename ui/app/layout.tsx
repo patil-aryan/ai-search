@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import FloatingNavbar from "@/components/FloatingNavbar";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Future Search - Chat with internet",
+  title: "FutureSearch - AI-Powered Search",
   description:
-    "Future Search is an AI powered that is connected to the internet",
+    "FutureSearch is an AI-powered search engine connected to the internet",
 };
 
 export default function RootLayout({
@@ -19,7 +19,10 @@ export default function RootLayout({
   return (
     <html className="h-full" lang="en">
       <body className={`${inter.className} h-full`}>
-        <Sidebar>{children}</Sidebar>
+        <FloatingNavbar />
+        <main className="h-full">
+          {children}
+        </main>
       </body>
     </html>
   );

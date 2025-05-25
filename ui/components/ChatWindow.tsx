@@ -2,7 +2,7 @@
 
 import { Document } from "@langchain//core/documents";
 import { useEffect, useRef, useState } from "react";
-import EmptyChat from "./EmptyChat";
+import EnhancedHomepage from "./EnhancedHomepage";
 import Chat from "./Chat";
 import Navbar from "./Navbar";
 import { getSuggestions } from "@/lib/actions";
@@ -15,6 +15,21 @@ export type Message = {
   suggestions?: string[];
   sources?: Document[];
 };
+
+interface ChatHistory {
+  id: string;
+  title: string;
+  firstMessage: string;
+  lastMessage: string;
+  timestamp: Date;
+  messageCount: number;
+  starred: boolean;
+  messages: Array<{
+    role: "user" | "assistant";
+    content: string;
+    timestamp: Date;
+  }>;
+}
 
 const useSocket = (url: string) => {
   const [ws, setWs] = useState<WebSocket | null>(null);
@@ -43,11 +58,61 @@ const ChatWindow = () => {
   const messagesRef = useRef<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageAppeared, setMessageAppeared] = useState(false);
-  const [focusMode, setFocusMode] = useState("webSearch");
+  const [focusMode, setFocusMode] = useState("all");
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  const saveChatToHistory = (chatMessages: Message[]) => {
+    if (chatMessages.length === 0) return;
+
+    const chatId = currentChatId || Date.now().toString();
+    const firstUserMessage = chatMessages.find(m => m.role === "user");
+    const lastMessage = chatMessages[chatMessages.length - 1];
+    
+    const chatHistoryEntry: ChatHistory = {
+      id: chatId,
+      title: (firstUserMessage?.content ? 
+        firstUserMessage.content.substring(0, 50) + (firstUserMessage.content.length > 50 ? "..." : "") 
+        : "Untitled Chat"),
+      firstMessage: firstUserMessage?.content || "",
+      lastMessage: lastMessage?.content || "",
+      timestamp: new Date(),
+      messageCount: chatMessages.length,
+      starred: false,
+      messages: chatMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.createdAt
+      }))
+    };
+
+    try {
+      const stored = localStorage.getItem("futuresearch_chats");
+      const existingChats: ChatHistory[] = stored ? JSON.parse(stored) : [];
+      
+      // Update existing chat or add new one
+      const existingIndex = existingChats.findIndex(chat => chat.id === chatId);
+      if (existingIndex !== -1) {
+        existingChats[existingIndex] = chatHistoryEntry;
+      } else {
+        existingChats.unshift(chatHistoryEntry);
+      }
+      
+      // Keep only last 100 chats to prevent localStorage overflow
+      const limitedChats = existingChats.slice(0, 100);
+      
+      localStorage.setItem("futuresearch_chats", JSON.stringify(limitedChats));
+      
+      if (!currentChatId) {
+        setCurrentChatId(chatId);
+      }
+    } catch (error) {
+      console.error("Failed to save chat history:", error);
+    }
+  };
 
   const sendMessage = async (message: string) => {
     if (loading) return;
@@ -68,15 +133,14 @@ const ChatWindow = () => {
       })
     );
 
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      {
-        content: message,
-        id: Math.random().toString(36).substring(7),
-        role: "user",
-        createdAt: new Date(),
-      },
-    ]);
+    const newUserMessage: Message = {
+      content: message,
+      id: Math.random().toString(36).substring(7),
+      role: "user",
+      createdAt: new Date(),
+    };
+
+    setMessages((prevMessages) => [...prevMessages, newUserMessage]);
 
     const messageHandler = async (e: MessageEvent) => {
       const data = JSON.parse(e.data);
@@ -85,16 +149,14 @@ const ChatWindow = () => {
         sources = data.data;
 
         if (!added) {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              content: "",
-              id: data.messageId,
-              role: "assistant",
-              sources: sources,
-              createdAt: new Date(),
-            },
-          ]);
+          const assistantMessage: Message = {
+            content: "",
+            id: data.messageId,
+            role: "assistant",
+            sources: sources,
+            createdAt: new Date(),
+          };
+          setMessages((prevMessages) => [...prevMessages, assistantMessage]);
           added = true;
         }
         setMessageAppeared(true);
@@ -102,16 +164,14 @@ const ChatWindow = () => {
 
       if (data.type === "message") {
         if (!added) {
-          setMessages((prevMessages) => [
-            ...prevMessages,
-            {
-              content: data.data,
-              id: data.messageId,
-              role: "assistant",
-              sources: sources,
-              createdAt: new Date(),
-            },
-          ]);
+          const assistantMessage: Message = {
+            content: data.data,
+            id: data.messageId,
+            role: "assistant",
+            sources: sources,
+            createdAt: new Date(),
+          };
+          setMessages((prevMessages) => [...prevMessages, assistantMessage]);
           added = true;
         }
 
@@ -136,6 +196,14 @@ const ChatWindow = () => {
         ]);
         ws?.removeEventListener("message", messageHandler);
         setLoading(false);
+
+        // Save chat history after message completion
+        const updatedMessages = [...messagesRef.current];
+        // Update the last assistant message with complete content
+        if (updatedMessages.length > 0 && updatedMessages[updatedMessages.length - 1].role === "assistant") {
+          updatedMessages[updatedMessages.length - 1].content = receivedMessage;
+        }
+        saveChatToHistory(updatedMessages);
 
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
 
@@ -193,7 +261,7 @@ const ChatWindow = () => {
           />
         </>
       ) : (
-        <EmptyChat
+        <EnhancedHomepage
           sendMessage={sendMessage}
           focusMode={focusMode}
           setFocusMode={setFocusMode}

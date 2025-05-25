@@ -39,7 +39,7 @@ const Navbar = ({ messages }: { messages: Message[] }) => {
   }, []);
 
   return (
-    <div className="fixed text-white/70 z-40 top-0 left-0 right-0 px-4 lg:pl-[104px] lg:pr-6 lg:px-8 flex flex-row items-center justify-between w-full py-4 text-sm border-b bg-[#0A0A0A] border-[#1C1C1C]">
+    <div className="fixed text-white/70 z-40 top-0 left-0 right-0 px-4 lg:pl-[280px] lg:pr-6 lg:px-8 flex flex-row items-center justify-between w-full py-4 text-sm border-b bg-gradient-to-r from-[#0A0A0A] via-[#0f1419] to-[#0A0A0A] border-[#1a1f2e] backdrop-blur-sm">
       <Edit
         size={17}
         className="active:scale-95 transition duration-100 cursor-pointer lg:hidden"

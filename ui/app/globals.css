@@ -74,10 +74,21 @@
       @apply bg-background text-foreground;
     }
   }
-
   @layer utilities {
     .animate-spin-slow {
       animation: spin 10s linear infinite;
+    }
+
+    .animate-glow {
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+
+    .animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
+
+    .backdrop-blur-glass {
+      backdrop-filter: blur(12px) saturate(150%);
     }
 
     @keyframes spin {
@@ -86,6 +97,24 @@
       }
       to {
         transform: rotate(360deg);
+      }
+    }
+
+    @keyframes glow {
+      from {
+        box-shadow: 0 0 20px rgba(36, 160, 237, 0.2);
+      }
+      to {
+        box-shadow: 0 0 30px rgba(36, 160, 237, 0.4);
+      }
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-10px);
       }
     }
   }

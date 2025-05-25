@@ -88,10 +88,9 @@ const SettingsDialog = ({
               leave="ease-in duration-100"
               leaveFrom="opacity-100 scale-200"
               leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel
+            >              <Dialog.Panel
                 className={
-                  "w-full max-w-md transform rounded-2xl border border-[#1c1c1c] bg-[#111111] p-6 text-left align-middle shadow-xl transition-all"
+                  "w-full max-w-md transform rounded-2xl border border-[#23272f] bg-gradient-to-br from-[#181c24] to-[#1a1f2e] p-6 text-left align-middle shadow-2xl backdrop-blur-sm transition-all"
                 }
               >
                 <Dialog.Title

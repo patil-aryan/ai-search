@@ -30,49 +30,54 @@ const Sidebar = ({ children }: { children: React.ReactNode }) => {
     },
     {
       icon: Search,
-      href: "/",
+      href: "/discover",
       active: segments.includes("discover"),
       label: "Discover",
     },
     {
       icon: BookOpenText,
-      href: "/",
+      href: "/library",
       active: segments.includes("library"),
       label: "Library",
     },
   ];
   return (
     <div>
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-56 lg:flex-col"> {/* Increased width for text */}
-        <div className="flex grow flex-col items-start justify-between gap-y-5 overflow-y-auto bg-[#111111] px-4 py-8"> {/* Changed items-center to items-start and px-2 to px-4 */}
-          <a href="/" className="flex flex-row items-center gap-x-3 mb-4"> {/* Added flex for icon and text, and margin */}
-            <Globe className="text-white cursor-pointer h-8 w-8 animate-spin-slow" /> {/* Changed logo to Globe and added animation */}
-            <span className="text-white font-semibold text-xl">AI SEARCH</span> {/* Changed App Name */}
+      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
+        <div className="flex grow flex-col items-start justify-between gap-y-5 overflow-y-auto bg-gradient-to-b from-[#10131a] via-[#111111] to-[#181c24] px-5 py-8 shadow-2xl border-r border-[#1a1f2e]">
+          <a href="/" className="flex flex-row items-center gap-x-3 mb-6 group">
+            <div className="relative">
+              <Globe className="text-[#24A0ED] cursor-pointer h-9 w-9 animate-pulse drop-shadow-lg" />
+              <div className="absolute inset-0 text-[#24A0ED] h-9 w-9 animate-ping opacity-20">
+                <Globe className="h-9 w-9" />
+              </div>
+            </div>
+            <span className="text-white font-bold text-xl tracking-wide group-hover:text-[#24A0ED] transition-colors duration-200">AI SEARCH</span>
           </a>
-          <div className="flex flex-col items-start gap-y-1 w-full"> {/* Changed items-center to items-start and gap */}
+          <div className="flex flex-col items-start gap-y-2 w-full">
             {navLinks.map((link, i) => (
               <Link
                 key={i}
                 href={link.href}
                 className={`
-                    relative flex flex-row items-center gap-x-3 cursor-pointer hover:bg-white/10 hover:text-white duration-150 transition w-full px-3 py-2.5 rounded-lg ${
-                      link.active ? "text-white bg-white/5" : "text-white/70"
+                    relative flex flex-row items-center gap-x-4 cursor-pointer hover:bg-gradient-to-r hover:from-[#24A0ED]/10 hover:to-transparent hover:text-white duration-200 transition-all w-full px-4 py-3 rounded-xl group hover:shadow-lg hover:shadow-[#24A0ED]/5 ${
+                      link.active ? "text-white bg-gradient-to-r from-[#24A0ED]/20 to-transparent shadow-lg shadow-[#24A0ED]/10" : "text-white/70"
                     }`}
               >
-                <link.icon className="h-5 w-5" /> {/* Added icon size */}
-                <span className="text-sm font-medium">{link.label}</span> {/* Added text label */}
+                <link.icon className="h-6 w-6 group-hover:scale-110 transition-transform duration-200" />
+                <span className="text-sm font-medium">{link.label}</span>
                 {link.active && (
-                  <div className="absolute right-0 h-full w-1 rounded-l-lg bg-white" />
+                  <div className="absolute right-0 h-full w-1 rounded-l-lg bg-gradient-to-b from-[#24A0ED] to-[#1a8fd1]" />
                 )}
               </Link>
             ))}
           </div>
           <div
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            className="text-white/70 cursor-pointer hover:bg-white/10 hover:text-white duration-150 transition w-full px-3 py-2.5 rounded-lg flex flex-row items-center gap-x-3"
+            className="text-white/70 cursor-pointer hover:bg-gradient-to-r hover:from-[#24A0ED]/10 hover:to-transparent hover:text-white duration-200 transition-all w-full px-4 py-3 rounded-xl flex flex-row items-center gap-x-4 group hover:shadow-lg hover:shadow-[#24A0ED]/5"
           >
-            <Settings className="h-5 w-5" /> {/* Added icon size */}
-            <span className="text-sm font-medium">Settings</span> {/* Added text label */}
+            <Settings className="h-6 w-6 group-hover:scale-110 transition-transform duration-200" />
+            <span className="text-sm font-medium">Settings</span>
           </div>
           <SettingsDialog
             isOpen={isSettingsOpen}
@@ -80,7 +85,7 @@ const Sidebar = ({ children }: { children: React.ReactNode }) => {
           />
         </div>
       </div>
-      <div className="fixed bottom-0 flex flex-row w-full z-50 items-center gap-x-6 bg-[#111111] px-4 py-4 shadow-sm lg:hidden">
+      <div className="fixed bottom-0 flex flex-row w-full z-50 items-center gap-x-6 bg-gradient-to-r from-[#10131a] via-[#111111] to-[#181c24] px-4 py-4 shadow-2xl border-t border-[#1a1f2e] lg:hidden">
         {navLinks.map((link, i) => (
           <Link
             key={i}

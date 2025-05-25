@@ -14,14 +14,16 @@ interface Config {
   API_KEYS: {
     OPENAI: string;
     GROQ: string;
-    GEMINI: string; // Added Gemini API Key
-    SEARXNG_SECRET?: string; // Added SearXNG Secret Key (optional if not always present)
+    GEMINI: string | string[]; // Support both single key and array of keys
+    SEARXNG_SECRET?: string;
   };
   API_ENDPOINTS: {
     SEARXNG: string;
     OLLAMA: string;
   };
 }
+
+let currentKeyIndex = 0;
 
 const loadConfig = () =>
   toml.parse(
@@ -44,7 +46,33 @@ export const getOpenaiApiKey = () => loadConfig().API_KEYS.OPENAI;
 
 export const getGroqApiKey = () => loadConfig().API_KEYS.GROQ;
 
-export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI; // Added Gemini API Key getter
+// Enhanced Gemini API key management with load balancing and failover
+export const getGeminiApiKey = () => {
+  const config = loadConfig();
+  const geminiKeys = config.API_KEYS.GEMINI;
+  
+  if (Array.isArray(geminiKeys)) {
+    // Round-robin load balancing
+    const selectedKey = geminiKeys[currentKeyIndex % geminiKeys.length];
+    currentKeyIndex = (currentKeyIndex + 1) % geminiKeys.length;
+    return selectedKey;
+  }
+  
+  return geminiKeys; // Single key fallback
+};
+
+// Get all Gemini keys for failover scenarios
+export const getAllGeminiApiKeys = () => {
+  const config = loadConfig();
+  const geminiKeys = config.API_KEYS.GEMINI;
+  return Array.isArray(geminiKeys) ? geminiKeys : [geminiKeys];
+};
+
+// Get a specific Gemini key by index
+export const getGeminiApiKeyByIndex = (index: number) => {
+  const keys = getAllGeminiApiKeys();
+  return keys[index % keys.length];
+};
 
 export const getSearxngApiEndpoint = () => loadConfig().API_ENDPOINTS.SEARXNG;
 

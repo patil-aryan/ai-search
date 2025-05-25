@@ -1,5 +1,5 @@
 import { ImagesIcon, PlusIcon, VideoIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Lightbox, { GenericSlide } from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import { Message } from "./ChatWindow";
@@ -35,103 +35,136 @@ const SearchVideos = ({
   const [open, setOpen] = useState(false);
   const [slides, setSlides] = useState<any[]>([]);
 
+  // Auto-load videos when component mounts
+  useEffect(() => {
+    if (query && query.trim()) {
+      loadVideos();
+    }
+  }, [query]);
+
+  const loadVideos = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/videos`,
+        {
+          method: "POST",
+          headers: {
+            "Content-type": "application/json",
+          },
+          body: JSON.stringify({
+            query: query,
+            chat_history: chat_history,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      const videos = data.videos || [];
+      setVideos(videos);
+
+      setSlides(
+        videos.map((video: Video) => {
+          return {
+            type: "video-slide",
+            iframe_src: video.iframe_src,
+            src: video.img_src,
+          };
+        })
+      );
+    } catch (error) {
+      console.error("Error loading videos:", error);
+      setVideos([]);
+    }
+    setLoading(false);
+  };
+
   return (
     <>
       {!loading && videos === null && (
         <button
-          onClick={async () => {
-            setLoading(true);
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_API_URL}/videos`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-type": "application/json",
-                },
-                body: JSON.stringify({
-                  query: query,
-                  chat_history: chat_history,
-                }),
-              }
-            );
-
-            const data = await res.json();
-
-            const videos = data.videos;
-            setVideos(videos);
-
-            setSlides(
-              videos.map((video: Video) => {
-                return {
-                  type: "video-slide",
-                  iframe_src: video.iframe_src,
-                  src: video.img_src,
-                };
-              })
-            );
-            setLoading(false);
-          }}
-          className="
-        border border-dashed border-[#1C1C1C] hover:bg-[#1c1c1c] active:scale-95 duration-200 transition px-4 py-2 flex flex-row items-center justify-between rounded-lg text-white text-sm w-full"
+          onClick={loadVideos}
+          className="border border-dashed border-gray-300 hover:bg-gray-50 active:scale-95 duration-200 transition px-4 py-2 flex flex-row items-center justify-between rounded-lg text-gray-700 text-sm w-full bg-white hover:border-gray-400"
         >
           <div className="flex flex-row items-center space-x-2">
             <VideoIcon size={17} />
             <p>Search videos</p>
           </div>
-          <PlusIcon className="text-[#24A0ED]" size={17} />
+          <PlusIcon className="text-gray-600" size={17} />
         </button>
       )}
       {loading && (
-        <div className="grid grid-cols-2 gap-2">
-          {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-[#1C1C1C] h-32 w-full rounded-lg animate-pulse aspect-video object-cover"
-            />
-          ))}
+        <div className="bg-white p-3 rounded-lg border border-gray-200">
+          <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
+            <VideoIcon className="w-4 h-4 mr-2" />
+            Related Videos
+          </h3>
+          <div className="grid grid-cols-2 gap-2">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-gray-200 h-24 w-full rounded-lg animate-pulse aspect-video"
+              />
+            ))}
+          </div>
         </div>
       )}
       {videos !== null && videos.length > 0 && (
-        <>
+        <div className="bg-white p-3 rounded-lg border border-gray-200">
+          <h3 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
+            <VideoIcon className="w-4 h-4 mr-2" />
+            Related Videos ({videos.length})
+          </h3>
           <div className="grid grid-cols-2 gap-2">
             {videos.length > 4
               ? videos.slice(0, 3).map((video, i) => (
-                  <img
-                    onClick={() => {
-                      setOpen(true);
-                      setSlides([
-                        slides[i],
-                        ...slides.slice(0, i),
-                        ...slides.slice(i + 1),
-                      ]);
-                    }}
-                    key={i}
-                    src={video.img_src}
-                    alt={video.title}
-                    className="h-full w-full aspect-video object-cover rounded-lg transition duration-200 active:scale-95 cursor-zoom-in hover:scale-[1.02]"
-                  />
+                  <div key={i} className="relative group">
+                    <img
+                      onClick={() => {
+                        setOpen(true);
+                        setSlides([
+                          slides[i],
+                          ...slides.slice(0, i),
+                          ...slides.slice(i + 1),
+                        ]);
+                      }}
+                      src={video.img_src}
+                      alt={video.title}
+                      className="h-24 w-full aspect-video object-cover rounded-lg transition-all duration-200 active:scale-95 cursor-pointer hover:scale-105 hover:shadow-md"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-black bg-opacity-60 rounded-full p-2 group-hover:bg-opacity-80 transition-all duration-200">
+                        <VideoIcon className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                  </div>
                 ))
               : videos.map((video, i) => (
-                  <img
-                    onClick={() => {
-                      setOpen(true);
-                      setSlides([
-                        slides[i],
-                        ...slides.slice(0, i),
-                        ...slides.slice(i + 1),
-                      ]);
-                    }}
-                    key={i}
-                    src={video.img_src}
-                    alt={video.title}
-                    className="h-full w-full aspect-video object-cover rounded-lg transition duration-200 active:scale-95 cursor-zoom-in hover:scale-[1.02]"
-                  />
+                  <div key={i} className="relative group">
+                    <img
+                      onClick={() => {
+                        setOpen(true);
+                        setSlides([
+                          slides[i],
+                          ...slides.slice(0, i),
+                          ...slides.slice(i + 1),
+                        ]);
+                      }}
+                      src={video.img_src}
+                      alt={video.title}
+                      className="h-24 w-full aspect-video object-cover rounded-lg transition-all duration-200 active:scale-95 cursor-pointer hover:scale-105 hover:shadow-md"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-black bg-opacity-60 rounded-full p-2 group-hover:bg-opacity-80 transition-all duration-200">
+                        <VideoIcon className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                  </div>
                 ))}
             {videos.length > 4 && (
               <button
                 onClick={() => setOpen(true)}
-                className="
-              bg-[#111111] hover:bg-[#1c1c1c] transition duration-200 active:scale-95 h-auto w-full rounded-lg flex flex-col justify-between text-white p-2 hover:scale-[1.02]"
+                className="bg-gray-100 hover:bg-gray-200 transition duration-200 active:scale-95 h-24 w-full rounded-lg flex flex-col justify-between text-gray-700 p-2 hover:scale-105"
               >
                 <div className="flex flex-row items-center space-x-1">
                   {videos.slice(3, 6).map((video, i) => (
@@ -139,12 +172,12 @@ const SearchVideos = ({
                       key={i}
                       src={video.img_src}
                       alt={video.title}
-                      className="h-6 w-12 rounded-md lg:h-3 lg:w-6 aspect-video object-cover"
+                      className="h-4 w-8 rounded-md aspect-video object-cover"
                     />
                   ))}
                 </div>
-                <p className="text-white/70 text-xs">
-                  View {videos.length - 3} more
+                <p className="text-gray-600 text-xs">
+                  +{videos.length - 3} more
                 </p>
               </button>
             )}
@@ -167,7 +200,7 @@ const SearchVideos = ({
                 ) : null,
             }}
           />
-        </>
+        </div>
       )}
     </>
   );

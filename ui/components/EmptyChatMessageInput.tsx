@@ -30,16 +30,15 @@ const EmptyChatMessageInput = ({
         }
       }}
       className="w-full"
-    >
-      <div className="flex flex-col bg-[#111111] px-5 pt-5 pb-2 rounded-lg w-full border border-[#1C1C1C]">
+    >      <div className="flex flex-col bg-gradient-to-br from-[#181c24] to-[#1a1f2e] px-6 pt-6 pb-3 rounded-2xl w-full border border-[#23272f] shadow-2xl backdrop-blur-sm hover:shadow-[#24A0ED]/5 transition-all duration-300">
         <TextareaAutosize
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           minRows={2}
-          className="bg-transparent placeholder:text-white/50 text-sm text-white resize-none focus:outline-none w-full max-h-24 lg:max-h-36 xl:max-h-48"
+          className="bg-transparent placeholder:text-white/40 text-sm text-white resize-none focus:outline-none w-full max-h-24 lg:max-h-36 xl:max-h-48"
           placeholder="Ask anything..."
         />
-        <div className="flex flex-row items-center justify-between mt-4">
+        <div className="flex flex-row items-center justify-between mt-5">
           <div className="flex flex-row items-center space-x-1 -mx-2">
             <Focus focusMode={focusMode} setFocusMode={setFocusMode} />
             <Attach />
@@ -51,7 +50,7 @@ const EmptyChatMessageInput = ({
             />
             <button
               disabled={message.trim().length === 0}
-              className="bg-[#24A0ED] text-white disabled:text-white/50 hover:bg-opacity-85 transition duration-100 disabled:bg-[#ececec21] rounded-full p-2"
+              className="bg-gradient-to-r from-[#24A0ED] to-[#1a8fd1] text-white disabled:text-white/40 hover:from-[#2bb0ff] hover:to-[#24A0ED] hover:scale-105 active:scale-95 transition-all duration-150 disabled:bg-gradient-to-r disabled:from-[#2a2f3a] disabled:to-[#1f242e] rounded-full p-2.5 shadow-lg disabled:shadow-none"
             >
               <ArrowRight size={17} />
             </button>
