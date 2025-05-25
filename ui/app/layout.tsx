@@ -6,9 +6,9 @@ import FloatingNavbar from "@/components/FloatingNavbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "FutureSearch - AI-Powered Search",
+  title: "search - AI-Powered Search",
   description:
-    "FutureSearch is an AI-powered search engine connected to the internet",
+    "search is an AI-powered search engine connected to the internet",
 };
 
 export default function RootLayout({

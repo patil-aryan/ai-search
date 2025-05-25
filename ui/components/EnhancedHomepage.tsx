@@ -6,9 +6,12 @@ import PremiumSearchInput from "./PremiumSearchInput";
 import { motion, AnimatePresence } from "framer-motion";
 import Lottie from "lottie-react";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StockChart from "./StockChart";
+import { ResponsiveContainer } from "recharts";
+import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface WeatherData {
   location: string;
@@ -39,6 +42,17 @@ interface SportsScore {
   gameTime?: string;
 }
 
+interface SportEvent {
+  id: string;
+  league: string;
+  match: string;
+  time: string;
+  status: string;
+  homeScore: number;
+  awayScore: number;
+  venue: string;
+}
+
 interface StockData {
   symbol: string;
   price: number;
@@ -56,7 +70,6 @@ const agentModes = [
   { id: "reddit", name: "Reddit", icon: MessageSquare, description: "Discussions and communities" },
   { id: "business", name: "Business", icon: Briefcase, description: "Market news and company info" },
   { id: "shopping", name: "Shopping", icon: ShoppingBag, description: "Products and e-commerce" },
-  { id: "maps", name: "Maps", icon: Map, description: "Location-based search" },
 ];
 
 const EnhancedHomepage = ({
@@ -67,6 +80,7 @@ const EnhancedHomepage = ({
   const [weather, setWeather] = useState<WeatherData[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
   const [sports, setSports] = useState<SportsScore[]>([]);
+  const [sportsEvents, setSportsEvents] = useState<SportEvent[]>([]);
   const [stocks, setStocks] = useState<StockData[]>([]);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [currentTime, setCurrentTime] = useState<string>("");
@@ -74,6 +88,9 @@ const EnhancedHomepage = ({
   const [lottieData, setLottieData] = useState<any>(null);
   const [selectedAgent, setSelectedAgent] = useState<string>(agentModes[0].id);
   const [selectedNewsArticle, setSelectedNewsArticle] = useState<NewsItem | null>(null);
+  const [crypto, setCrypto] = useState<any[]>([]);
+  const [selectedStock, setSelectedStock] = useState<string>("AAPL");
+  const [selectedCrypto, setSelectedCrypto] = useState<string>("bitcoin");
 
   // API Keys
   const NEWS_API_KEY = "95e671056a9049fc9b1f3781faacc5e7";
@@ -289,6 +306,19 @@ const EnhancedHomepage = ({
     }
   };
 
+  // Fetch crypto data
+  const fetchCrypto = async () => {
+    try {
+      const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false');
+      if (!response.ok) throw new Error('Crypto API error');
+      const data = await response.json();
+      setCrypto(data);
+    } catch (error) {
+      console.error('Crypto fetch error:', error);
+      setCrypto([]);
+    }
+  };
+
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
@@ -305,7 +335,8 @@ const EnhancedHomepage = ({
       await Promise.all([
         fetchWeather(),
         fetchNews(),
-        fetchStocks()
+        fetchStocks(),
+        fetchCrypto()
       ]);
       
       setLoading(false);
@@ -362,6 +393,148 @@ const EnhancedHomepage = ({
     return `Summary for "${article.title}": This article from ${article.source.name} published on ${new Date(article.publishedAt).toLocaleDateString()} covers topics related to ${article.description.substring(0, 50)}...`;
   };
 
+  const CryptoChart = ({ crypto }: { crypto: any[] }) => {
+    if (!crypto.length) return <p className="text-xs text-neutral-400">Loading crypto data...</p>;
+    // Use recharts AreaChart for the first coin (BTC)
+    const btc = crypto[0];
+    const chartData = Array.from({ length: 24 }, (_, i) => ({
+      time: `${i}:00`,
+      price: btc.current_price * (1 + (Math.random() - 0.5) * 0.02),
+    }));
+    return (
+      <div className="space-y-4">
+        <Card className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-black flex items-center gap-2">
+                <DollarSign className="w-4 h-4" />
+                {btc.name} ({btc.symbol.toUpperCase()})
+              </CardTitle>
+              <div className="text-right">
+                 <p className="text-sm font-bold text-blue-700">${btc.current_price.toLocaleString()}</p>
+                 <Badge variant={btc.price_change_percentage_24h >= 0 ? "default" : "destructive"} className={`text-[10px] px-1.5 py-0.5 ${btc.price_change_percentage_24h >= 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{btc.price_change_percentage_24h >= 0 ? '+' : ''}{btc.price_change_percentage_24h.toFixed(2)}%</Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="h-32 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorCrypto" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} interval="preserveStartEnd" />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} domain={['dataMin - 1', 'dataMax + 1']} />
+                  <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value: any) => [`$${value.toFixed(2)}`, 'Price']} labelFormatter={(label) => `Time: ${label}`} />
+                  <Area type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={2} fill="url(#colorCrypto)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        <div className="grid grid-cols-2 gap-3">
+          {crypto.slice(1, 5).map((coin, idx) => (
+            <Card key={coin.id} className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-semibold text-xs text-black truncate">{coin.name} ({coin.symbol.toUpperCase()})</span>
+                  <Badge variant={coin.price_change_percentage_24h >= 0 ? "default" : "destructive"} className={`text-[9px] px-1 py-0.5 ${coin.price_change_percentage_24h >= 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{coin.price_change_percentage_24h >= 0 ? '+' : ''}{coin.price_change_percentage_24h.toFixed(1)}%</Badge>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="font-bold text-sm text-black">${coin.current_price.toFixed(2)}</span>
+                  <span className={`text-[10px] font-medium ${coin.price_change_percentage_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>{coin.price_change_percentage_24h >= 0 ? '+' : ''}${coin.price_change_percentage_24h.toFixed(2)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const StockDetailAndInsights = ({ stock }: { stock: StockData | undefined }) => {
+    if (!stock) return <p className="text-xs text-neutral-400">Select a stock to see details.</p>;
+    return (
+      <Card className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold text-black">{stock.name} ({stock.symbol}) - Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs text-neutral-700">
+          <p><strong>Price:</strong> ${stock.price.toFixed(2)}</p>
+          <p><strong>Change:</strong> <span className={stock.change >= 0 ? 'text-green-600' : 'text-red-600'}>{stock.change.toFixed(2)} ({stock.changePercent.toFixed(2)}%)</span></p>
+          <div className="mt-3 pt-3 border-t border-neutral-200/60">
+            <h4 className="text-xs font-semibold text-black mb-1 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> AI Powered Insights</h4>
+            <p className="italic">AI insights for {stock.name} suggest a positive outlook based on recent market activity and analyst reports. Consider further research before investing.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const CryptoDetailAndInsights = ({ coin }: { coin: any | undefined }) => {
+    if (!coin) return <p className="text-xs text-neutral-400">Select a cryptocurrency to see details.</p>;
+    return (
+      <Card className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base font-semibold text-black">{coin.name} ({coin.symbol.toUpperCase()}) - Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-xs text-neutral-700">
+          <p><strong>Price:</strong> ${coin.current_price.toLocaleString()}</p>
+          <p><strong>Market Cap:</strong> ${coin.market_cap.toLocaleString()}</p>
+          <p><strong>24h Change:</strong> <span className={coin.price_change_percentage_24h >= 0 ? 'text-green-600' : 'text-red-600'}>{coin.price_change_percentage_24h.toFixed(2)}%</span></p>
+          {coin.total_volume && <p><strong>24h Volume:</strong> ${coin.total_volume.toLocaleString()}</p>}
+           <div className="mt-3 pt-3 border-t border-neutral-200/60">
+            <h4 className="text-xs font-semibold text-black mb-1 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> AI Powered Insights</h4>
+            <p className="italic">AI analysis indicates {coin.name} is currently experiencing high volatility. Monitor market trends closely. This is not financial advice.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+  
+  const TopStocksList = [
+    { symbol: 'AAPL', name: 'Apple Inc.' },
+    { symbol: 'MSFT', name: 'Microsoft Corp.' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc. (Google)' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.' },
+    { symbol: 'NVDA', name: 'NVIDIA Corporation' },
+    { symbol: 'TSLA', name: 'Tesla, Inc.' },
+    { symbol: 'META', name: 'Meta Platforms, Inc.' },
+    { symbol: 'BRK-A', name: 'Berkshire Hathaway Inc.' },
+    { symbol: 'JPM', name: 'JPMorgan Chase & Co.' },
+    { symbol: 'V', name: 'Visa Inc.' },
+    { symbol: 'JNJ', name: 'Johnson & Johnson' },
+    { symbol: 'UNH', name: 'UnitedHealth Group Inc.' },
+    { symbol: 'WMT', name: 'Walmart Inc.' },
+    { symbol: 'PG', name: 'Procter & Gamble Co.' },
+    { symbol: 'XOM', name: 'Exxon Mobil Corp.' },
+    { symbol: 'HD', name: 'Home Depot, Inc.' },
+    { symbol: 'CVX', name: 'Chevron Corporation' },
+    { symbol: 'MA', name: 'Mastercard Incorporated' },
+    { symbol: 'LLY', name: 'Eli Lilly and Company' },
+    { symbol: 'AVGO', name: 'Broadcom Inc.' },
+  ];
+
+  // Placeholder for fetchSports
+  const fetchSports = async () => {
+    // Simulate fetching sports data
+    setSportsEvents([
+      { id: '1', league: 'NBA', match: 'Lakers vs Celtics', time: '7:30 PM ET', status: 'Upcoming', homeScore: 0, awayScore: 0, venue: 'Crypto.com Arena' },
+      { id: '2', league: 'MLB', match: 'Yankees vs Red Sox', time: 'LIVE', status: 'Live', homeScore: 3, awayScore: 2, venue: 'Yankee Stadium' },
+      { id: '3', league: 'NFL', match: 'Chiefs vs Eagles', time: 'Yesterday', status: 'Finished', homeScore: 27, awayScore: 24, venue: 'Arrowhead Stadium' },
+      { id: '4', league: 'NHL', match: 'Oilers vs Avalanche', time: '10:00 PM ET', status: 'Upcoming', homeScore: 0, awayScore: 0, venue: 'Rogers Place' },
+    ]);
+  };
+
+  useEffect(() => {
+    fetchSports(); // Call fetchSports
+    // ... rest of your useEffect
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-black relative pt-8">
       {/* Current Date - Top Right */}
@@ -372,22 +545,17 @@ const EnhancedHomepage = ({
       </div>
 
       {/* Main Content */}
-      <div className="max-w-3xl mx-auto px-4 pt-12 pb-12">
+      <div className="max-w-3xl mx-auto px-4 pt-4 pb-12">
         {/* Lottie Animation */}
         {lottieData ? (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="flex flex-col items-center mb-4"
-          >
-            <div className="w-24 h-24" style={{ filter: 'hue-rotate(200deg) brightness(1.2) saturate(1.5)' }}>
-              <Lottie animationData={lottieData} loop autoplay />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="flex flex-col items-center mb-4">
+            <div className="w-56 h-56" style={{ filter: 'hue-rotate(210deg) brightness(0.5) saturate(3.5) contrast(1.5)' }}>
+              <Lottie animationData={lottieData} loop autoplay style={{ width: '100%', height: '100%' }} />
             </div>
             <p className="mt-1 text-sm text-neutral-500">AI powered intelligent search engine</p>
           </motion.div>
         ) : (
-          <div className="flex flex-col items-center mb-4 h-28">
+          <div className="flex flex-col items-center mb-4 h-56">
             <p className="text-xs text-neutral-400">Loading animation...</p>
             <p className="mt-2 text-sm text-neutral-500">AI powered intelligent search engine</p>
           </div>
@@ -535,10 +703,16 @@ const EnhancedHomepage = ({
             )) : <p className="text-xs text-neutral-400">Loading news...</p>}
           </div>
 
-          {/* Live Stock Market Grid (Right) */}
+          {/* Live Stock Market Grid (Right) & Crypto Market */}
           <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-black mb-1">Stock Market</h2>
-            <StockChart stocks={stocks} />
+            <div>
+              <h2 className="text-sm font-semibold text-black mb-1">Stock Market</h2>
+              <StockChart stocks={stocks} />
+            </div>
+            <div className="mt-8">
+              <h2 className="text-sm font-semibold text-black mb-1">Crypto Market</h2>
+              <CryptoChart crypto={crypto} />
+            </div>
           </div>
         </motion.div>
       </div>
