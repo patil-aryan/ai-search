@@ -7,8 +7,10 @@ import handleYoutubeSearch from "../agents/youtubeSearchAgent";
 import handleRedditSearch from "../agents/redditSearchAgent";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { Embeddings } from "@langchain/core/embeddings";
+import { getChatModelProvider } from "../config"; // Added import
+import { GeminiAgent } from "../agents/geminiAgent"; // Added import
 
-type Message = {
+export type Message = {
   type: string;
   content: string;
   copilot: string;
@@ -74,30 +76,35 @@ export const handleMessage = async (
       );
     }
 
-    const history: BaseMessage[] = paresedMessage.history.map((msg) => {
-      if (msg[0] === "human") {
-        return new HumanMessage({
-          content: msg[1],
-        });
-      } else {
-        return new AIMessage({
-          content: msg[1],
-        });
-      }
-    });
+    // const chatModelProvider = getChatModelProvider(); // This check is no longer needed here as llm is pre-configured
 
     if (paresedMessage.type === "message") {
+      // Unified logic for all providers
+      const history: BaseMessage[] = paresedMessage.history.map((msg) => {
+        if (msg[0] === "human") {
+          return new HumanMessage({
+            content: msg[1],
+          });
+        } else {
+          return new AIMessage({
+            content: msg[1],
+          });
+        }
+      });
+
       const handler = searchHandlers[paresedMessage.focusMode];
       if (handler) {
         const emitter = handler(
           paresedMessage.content,
           history,
-          llm,
-          embeddings
+          llm, // llm is already correctly instantiated with Gemini if configured
+          embeddings // embeddings is also correctly instantiated
         );
         handleEmitterEvents(emitter, ws, id);
       } else {
-        ws.send(JSON.stringify({ type: "error", data: "Invalid focus mode" }));
+        ws.send(
+          JSON.stringify({ type: "error", data: "Invalid focus mode" })
+        );
       }
     }
   } catch (error) {

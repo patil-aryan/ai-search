@@ -1,6 +1,6 @@
 general:
   # Debug mode, only for development. Is overwritten by ${SEARXNG_DEBUG}
-  debug: false
+  debug: true
   # displayed name
   instance_name: "searxng"
   # For example: https://example.com/privacy
@@ -74,8 +74,8 @@ search:
 
 server:
   # Is overwritten by ${SEARXNG_PORT} and ${SEARXNG_BIND_ADDRESS}
-  port: 8888
-  bind_address: "127.0.0.1"
+  port: 8080
+  bind_address: "0.0.0.0"
   # public URL of the instance, to ensure correct inbound links. Is overwritten
   # by ${SEARXNG_URL}.
   base_url: / # "http://example.com/location"
@@ -86,7 +86,7 @@ server:
   # values there.
 
   secret_key: "a2fb23f1b02e6ee83875b09826990de0f6bd908b6638e8c10277d415f6ab852b" # Is overwritten by ${SEARXNG_SECRET}
-  # Proxying image results through searx
+  # # Proxying image results through searx
   image_proxy: false
   # 1.0 and 1.1 are supported
   http_protocol_version: "1.0"
@@ -823,10 +823,10 @@ engines:
     shortcut: good
     timeout: 4.0
     disabled: true
-
   - name: google
     engine: google
     shortcut: go
+    disabled: false
     # additional_tests:
     #   android: *test_android
 
@@ -841,10 +841,10 @@ engines:
     #       lang: ['en', 'de', 'fr', 'zh-CN']
     #     result_container:
     #       - ['one_title_contains', 'Salvador']
-
   - name: google news
     engine: google_news
     shortcut: gon
+    disabled: false
     # additional_tests:
     #   android: *test_android
 
@@ -853,10 +853,10 @@ engines:
     shortcut: gov
     # additional_tests:
     #   android: *test_android
-
   - name: google scholar
     engine: google_scholar
     shortcut: gos
+    disabled: false
 
   - name: google play apps
     engine: google_play
@@ -1486,11 +1486,11 @@ engines:
   - name: radio browser
     engine: radio_browser
     shortcut: rb
-
   - name: reddit
     engine: reddit
     shortcut: re
     page_size: 25
+    disabled: false
 
   - name: rottentomatoes
     engine: rottentomatoes

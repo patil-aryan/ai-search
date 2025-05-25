@@ -7,7 +7,7 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 WORKDIR /home/futuresearch
 
-COPY ui /home/futuresearch/
+COPY ui/ /home/futuresearch/
 
 RUN npm install
 RUN npm run build

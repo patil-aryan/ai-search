@@ -14,6 +14,8 @@ interface Config {
   API_KEYS: {
     OPENAI: string;
     GROQ: string;
+    GEMINI: string; // Added Gemini API Key
+    SEARXNG_SECRET?: string; // Added SearXNG Secret Key (optional if not always present)
   };
   API_ENDPOINTS: {
     SEARXNG: string;
@@ -42,7 +44,13 @@ export const getOpenaiApiKey = () => loadConfig().API_KEYS.OPENAI;
 
 export const getGroqApiKey = () => loadConfig().API_KEYS.GROQ;
 
+export const getGeminiApiKey = () => loadConfig().API_KEYS.GEMINI; // Added Gemini API Key getter
+
 export const getSearxngApiEndpoint = () => loadConfig().API_ENDPOINTS.SEARXNG;
+
+export const getSearxngSecretKey = (): string | undefined => {
+  return loadConfig().API_KEYS.SEARXNG_SECRET;
+};
 
 type RecursivePartial<T> = {
   [P in keyof T]?: RecursivePartial<T[P]>;

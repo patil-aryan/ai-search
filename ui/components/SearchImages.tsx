@@ -27,8 +27,7 @@ const SearchImages = ({
       {!loading && images === null && (
         <button
           onClick={async () => {
-            setLoading(true);
-            const res = await fetch(
+            setLoading(true);            const res = await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/images`,
               {
                 method: "POST",
@@ -44,16 +43,18 @@ const SearchImages = ({
 
             const data = await res.json();
 
-            const images = data.images;
+            const images = data.images || [];
             setImages(images);
 
-            setSlides(
-              images.map((image: Image) => {
-                return {
-                  src: image.img_src,
-                };
-              })
-            );
+            if (images && Array.isArray(images)) {
+              setSlides(
+                images.map((image: Image) => {
+                  return {
+                    src: image.img_src,
+                  };
+                })
+              );
+            }
             setLoading(false);
           }}
           className="
@@ -76,7 +77,7 @@ const SearchImages = ({
           ))}
         </div>
       )}
-      {images !== null && images.length > 0 && (
+      {images !== null && images && Array.isArray(images) && images.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-2">
             {images.length > 4

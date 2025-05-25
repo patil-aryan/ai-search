@@ -1,4 +1,6 @@
 import {
+  getChatModel,
+  getGeminiApiKey,
   getGroqApiKey,
   getOllamaApiEndpoint,
   getOpenaiApiKey,
@@ -6,13 +8,38 @@ import {
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { ChatOllama } from "@langchain/community/chat_models/ollama";
 import { OllamaEmbeddings } from "@langchain/community/embeddings/ollama";
+import {
+  ChatGoogleGenerativeAI,
+  GoogleGenerativeAIEmbeddings,
+} from "@langchain/google-genai";
 
 export const getAvailableProviders = async () => {
   const openAIApiKey = getOpenaiApiKey();
   const groqApiKey = getGroqApiKey();
+  const geminiApiKey = getGeminiApiKey();
+  const geminiModelName = getChatModel(); // This will be "gemini-2.0-flash"
   const ollamaEndpoint = getOllamaApiEndpoint();
 
   const models = {};
+
+  if (geminiApiKey && geminiModelName) {
+    try {
+      models["gemini"] = {
+        [geminiModelName]: new ChatGoogleGenerativeAI({
+          apiKey: geminiApiKey,
+          model: geminiModelName, // Changed modelName to model
+          temperature: 0.7,
+        }),
+        // It's good practice to have a specific embeddings model for the provider
+        embeddings: new GoogleGenerativeAIEmbeddings({
+          apiKey: geminiApiKey,
+          model: "models/embedding-001", // Changed modelName to model
+        }),
+      };
+    } catch (err) {
+      console.error(`Error loading Gemini models: ${err}`);
+    }
+  }
 
   if (openAIApiKey) {
     try {
