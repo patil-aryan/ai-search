@@ -94,7 +94,7 @@ const EnhancedSearchResults: React.FC = () => {
           // Fetch real suggestions
           if (queryParam) {
             // Ensure Message type is compatible with getSuggestions
-            const messages: Message[] = [{ role: 'user', content: queryParam, id: '1' }];
+            const messages: Message[] = [{ role: 'user', content: queryParam, id: '1', createdAt: new Date() }];
             const suggestions = await getSuggestions(messages);
             setRelatedSearches(suggestions.slice(0, 6)); // Take top 6
           } else {
