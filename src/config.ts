@@ -106,8 +106,9 @@ export const updateConfig = (config: RecursivePartial<Config>) => {
     }
   }
 
+  // Write config.toml to the working directory root, not relative to __dirname
   fs.writeFileSync(
-    path.join(__dirname, `../${configFileName}`),
+    configPath,
     toml.stringify(config)
   );
 };
