@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, MapPin, TrendingUp, Clock, Zap, Sun, Cloud, CloudRain, DollarSign, Activity, Sparkles, Globe, BookOpen, Youtube, MessageSquare, Briefcase, Image as ImageIcon, ShoppingBag, Map } from "lucide-react";
 import PremiumSearchInput from "./PremiumSearchInput";
 import { motion, AnimatePresence } from "framer-motion";
@@ -91,17 +91,20 @@ const EnhancedHomepage = ({
   const [crypto, setCrypto] = useState<any[]>([]);
   const [selectedStock, setSelectedStock] = useState<string>("AAPL");
   const [selectedCrypto, setSelectedCrypto] = useState<string>("bitcoin");
+  const [rotation, setRotation] = useState(0);
+  const [spinDir, setSpinDir] = useState(1);
+  const lottieRef = useRef<any>(null);
 
   // API Keys
   const NEWS_API_KEY = "95e671056a9049fc9b1f3781faacc5e7";
   const WEATHER_API_KEY = "4908931555f941dfd2851f15bf284f23";
   const FINNHUB_API_KEY = "d0pkha1r01qgccu9mju0d0pkha1r01qgccu9mjug";
 
-  // Load Lottie animation (first one)
+  // Load Lottie animation (replace with new file)
   useEffect(() => {
     const loadAnimation = async () => {
       try {
-        const response = await fetch("/Animation - 1748190729557.json");
+        const response = await fetch("/Animation - 1748190444778.json");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -175,83 +178,58 @@ const EnhancedHomepage = ({
     }
   };
 
-  // Fetch real news data
+  // Fetch real news data from all APIs and fallback
   const fetchNews = async () => {
     try {
-      const response = await fetch(
-        `https://newsapi.org/v2/top-headlines?country=us&pageSize=6&apiKey=${NEWS_API_KEY}`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`News API error: ${response.status}`);
+      // Try NewsService.getTopHeadlines
+      let news: any[] = [];
+      try {
+        const mod = await import("@/lib/api-services");
+        if (mod && mod.NewsService) {
+          // Get top headlines (US, general)
+          const headlines = await mod.NewsService.getTopHeadlines("us");
+          news = headlines;
+        }
+      } catch (err) {
+        console.error("NewsService.getTopHeadlines failed:", err);
       }
-      
-      const data = await response.json();
-      const filteredNews = data.articles
-        .filter((article: any) => 
-          article.title && 
-          article.description && 
-          article.urlToImage &&
-          !article.title.includes('[Removed]') &&
-          article.description !== '[Removed]'
-        )
-        .slice(0, 6)
-        .map((article: any) => ({
-          title: article.title,
-          description: article.description,
-          url: article.url,
-          urlToImage: article.urlToImage,
-          publishedAt: article.publishedAt,
-          source: { name: article.source.name },
-          category: article.category
-        }));
-      
-      if (filteredNews.length > 0) {
-        setNews(filteredNews);
-      } else {
-        throw new Error('No valid news articles found');
+      // Try NewsService.searchNews for trending topics
+      try {
+        const mod = await import("@/lib/api-services");
+        if (mod && mod.NewsService) {
+          const searchResults = await mod.NewsService.searchNews("trending");
+          if (Array.isArray(searchResults)) {
+            // Merge and deduplicate by title
+            const titles = new Set(news.map((n: any) => n.title));
+            for (const n of searchResults) {
+              if (!titles.has(n.title)) news.push(n);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("NewsService.searchNews failed:", err);
       }
+      // Fallback if still not enough news
+      if (!news || news.length < 6) {
+        try {
+          const mod = await import("@/lib/api-services");
+          if (mod && mod.NewsService) {
+            const fallback = mod.NewsService["getFallbackNews"]?.();
+            if (Array.isArray(fallback)) {
+              const titles = new Set(news.map((n: any) => n.title));
+              for (const n of fallback) {
+                if (!titles.has(n.title)) news.push(n);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("NewsService.getFallbackNews failed:", err);
+        }
+      }
+      setNews(news.slice(0, 8));
     } catch (error) {
       console.error("News fetch error:", error);
-      // Set fallback news data
-      setNews([
-        {
-          title: "Breaking: Major Tech Breakthrough in AI Development",
-          description: "Scientists announce significant advancement in artificial intelligence technology that could revolutionize multiple industries.",
-          url: "https://example.com/news/1",
-          urlToImage: "https://picsum.photos/seed/news1/400/250",
-          publishedAt: new Date().toISOString(),
-          source: { name: "Tech News" },
-          category: "Technology"
-        },
-        {
-          title: "Global Markets Show Strong Performance This Quarter",
-          description: "Stock markets worldwide demonstrate resilience with positive growth across major indices and sectors.",
-          url: "https://example.com/news/2",
-          urlToImage: "https://picsum.photos/seed/news2/400/250",
-          publishedAt: new Date(Date.now() - 3600000).toISOString(),
-          source: { name: "Financial Times" },
-          category: "Economy"
-        },
-        {
-          title: "Climate Change Summit Reaches Historic Agreement",
-          description: "World leaders unite on comprehensive climate action plan with ambitious targets for carbon reduction.",
-          url: "https://example.com/news/3",
-          urlToImage: "https://picsum.photos/seed/news3/400/250",
-          publishedAt: new Date(Date.now() - 7200000).toISOString(),
-          source: { name: "Global News" },
-          category: "Environment"
-        },
-        {
-          title: "Space Exploration Milestone: New Mission to Mars",
-          description: "Space agency announces successful launch of advanced rover mission with cutting-edge scientific instruments.",
-          url: "https://example.com/news/4",
-          urlToImage: "https://picsum.photos/seed/news4/400/250",
-          publishedAt: new Date(Date.now() - 10800000).toISOString(),
-          source: { name: "Space Today" },
-          category: "Science"
-        }
-      ]);
+      setNews([]);
     }
   };
 
@@ -350,6 +328,24 @@ const EnhancedHomepage = ({
       clearInterval(dataInterval);
     };
   }, []);
+
+  // Animation loop for subtle horizontal rotation
+  useEffect(() => {
+    let frame: number;
+    let last = performance.now();
+    const animate = (now: number) => {
+      const delta = (now - last) / 1000;
+      last = now;
+      setRotation((r) => (r + spinDir * 10 * delta) % 360); // 10 deg/sec, subtle
+      frame = requestAnimationFrame(animate);
+    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [spinDir]);
+
+  const handleLottieClick = () => {
+    setSpinDir((d) => -d); // Only reverse direction, no speed up
+  };
 
   const getWeatherIcon = (condition: string) => {
     switch (condition.toLowerCase()) {
@@ -536,7 +532,7 @@ const EnhancedHomepage = ({
   }, []);
 
   return (
-    <div className="min-h-screen bg-white text-black relative pt-8">
+    <div className="min-h-screen bg-white text-black relative pt-2">
       {/* Current Date - Top Right */}
       <div className="fixed top-6 right-6 z-40 bg-white/80 backdrop-blur-sm border border-neutral-200/70 rounded-lg px-3 py-1.5 shadow-sm">
         <p className="text-xs text-neutral-600 font-medium">
@@ -545,19 +541,28 @@ const EnhancedHomepage = ({
       </div>
 
       {/* Main Content */}
-      <div className="max-w-3xl mx-auto px-4 pt-4 pb-12">
+      <div className="max-w-3xl mx-auto px-4 pt-2 pb-2">
         {/* Lottie Animation */}
         {lottieData ? (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="flex flex-col items-center mb-4">
-            <div className="w-56 h-56" style={{ filter: 'hue-rotate(210deg) brightness(0.5) saturate(3.5) contrast(1.5)' }}>
-              <Lottie animationData={lottieData} loop autoplay style={{ width: '100%', height: '100%' }} />
-            </div>
-            <p className="mt-1 text-sm text-neutral-500">AI powered intelligent search engine</p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }} className="flex flex-col items-center mb-1">
+            <motion.div
+              className="w-64 h-64 cursor-pointer select-none"
+              onPointerDown={handleLottieClick}
+              onClick={handleLottieClick}
+              tabIndex={0}
+              aria-label="Interactive loading animation"
+            >
+              <Lottie lottieRef={lottieRef} animationData={lottieData} loop autoplay />
+            </motion.div>
+            <h1 className="mt-1 text-2xl font-light text-center">
+              <span className="font-light">Intelli</span><span className="font-extralight">Search</span>
+            </h1>
+            <p className="mt-1 text-base text-neutral-500">AI powered intelligent search engine</p>
           </motion.div>
         ) : (
-          <div className="flex flex-col items-center mb-4 h-56">
+          <div className="flex flex-col items-center mb-1 h-64">
             <p className="text-xs text-neutral-400">Loading animation...</p>
-            <p className="mt-2 text-sm text-neutral-500">AI powered intelligent search engine</p>
+            <p className="mt-1 text-base text-neutral-500">AI powered intelligent search engine</p>
           </div>
         )}
 
@@ -576,15 +581,16 @@ const EnhancedHomepage = ({
                     handleSearchWithAgent(input.value.trim());
                     input.value = '';
                 }
-            }} className="relative flex items-center border border-neutral-300 rounded-lg bg-white shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all pr-2">
-              <Search className="w-4 h-4 text-neutral-400 ml-3 mr-2 flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="Ask anything..."
-                className="flex-1 bg-transparent outline-none text-sm text-black placeholder-neutral-500 py-2.5"
-                // onKeyDown removed as form submission handles Enter
-              />
-              <Button type="submit" size="sm" className="ml-2 bg-black text-white hover:bg-neutral-800 rounded-md px-3 py-1.5 h-auto text-xs">
+            }} className="relative flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Ask anything..."
+                  className="flex h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+              <Button type="submit" className="px-6">
                 Search
               </Button>
             </form>

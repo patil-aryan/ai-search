@@ -60,21 +60,21 @@ const Sidebar = ({ children }: { children: React.ReactNode }) => {
                 key={i}
                 href={link.href}
                 className={`
-                    relative flex flex-row items-center gap-x-4 cursor-pointer hover:bg-gradient-to-r hover:from-[#24A0ED]/10 hover:to-transparent hover:text-white duration-200 transition-all w-full px-4 py-3 rounded-xl group hover:shadow-lg hover:shadow-[#24A0ED]/5 ${
+                    relative flex flex-row items-center gap-x-4 cursor-pointer hover:bg-gradient-to-r hover:from-[#24A0ED]/10 hover:to-transparent hover:text-white duration-200 transition-all w-full px-4 py-3 rounded-md group hover:shadow-lg hover:shadow-[#24A0ED]/5 ${
                       link.active ? "text-white bg-gradient-to-r from-[#24A0ED]/20 to-transparent shadow-lg shadow-[#24A0ED]/10" : "text-white/70"
                     }`}
               >
                 <link.icon className="h-6 w-6 group-hover:scale-110 transition-transform duration-200" />
                 <span className="text-sm font-medium">{link.label}</span>
                 {link.active && (
-                  <div className="absolute right-0 h-full w-1 rounded-l-lg bg-gradient-to-b from-[#24A0ED] to-[#1a8fd1]" />
+                  <div className="absolute right-0 h-full w-1 rounded-l-md bg-gradient-to-b from-[#24A0ED] to-[#1a8fd1]" />
                 )}
               </Link>
             ))}
           </div>
           <div
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-            className="text-white/70 cursor-pointer hover:bg-gradient-to-r hover:from-[#24A0ED]/10 hover:to-transparent hover:text-white duration-200 transition-all w-full px-4 py-3 rounded-xl flex flex-row items-center gap-x-4 group hover:shadow-lg hover:shadow-[#24A0ED]/5"
+            className="text-white/70 cursor-pointer hover:bg-gradient-to-r hover:from-[#24A0ED]/10 hover:to-transparent hover:text-white duration-200 transition-all w-full px-4 py-3 rounded-md flex flex-row items-center gap-x-4 group hover:shadow-lg hover:shadow-[#24A0ED]/5"
           >
             <Settings className="h-6 w-6 group-hover:scale-110 transition-transform duration-200" />
             <span className="text-sm font-medium">Settings</span>
@@ -96,7 +96,7 @@ const Sidebar = ({ children }: { children: React.ReactNode }) => {
                     }`}
           >
             {link.active && (
-              <div className="absolute top-0 -mt-4 w-full h-1 rounded-l-lg bg-white" />
+              <div className="absolute top-0 -mt-4 w-full h-1 rounded-l-md bg-white" />
             )}
             <link.icon />
             <p className="text-xs">{link.label}</p>

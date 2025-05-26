@@ -2,6 +2,7 @@ import { WebSocket, EventEmitter } from "ws";
 import { BaseMessage, HumanMessage, AIMessage } from "@langchain/core/messages";
 import handleWebSearch from "../agents/webSearchAgent";
 import handleAcademicSearch from "../agents/academicSearchAgent";
+import handleBusinessSearch from "../agents/businessSearchAgent";
 import handleWritingAssistant from "../agents/writingAssistant";
 import handleYoutubeSearch from "../agents/youtubeSearchAgent";
 import handleRedditSearch from "../agents/redditSearchAgent";
@@ -23,6 +24,7 @@ export type Message = {
 const searchHandlers = {
   webSearch: handleWebSearch,
   academicSearch: handleAcademicSearch,
+  businessSearch: handleBusinessSearch,
   writingAssistant: handleWritingAssistant,
   youtubeSearch: handleYoutubeSearch,
   redditSearch: handleRedditSearch,
@@ -30,6 +32,7 @@ const searchHandlers = {
   videoSearch: handleVideoSearch,
   all: handleWebSearch,
   academic: handleAcademicSearch,
+  business: handleBusinessSearch,
   news: handleWebSearch,
   videos: handleYoutubeSearch,
   images: handleImageSearch,
@@ -100,9 +103,7 @@ export const handleMessage = async (
             content: msg[1],
           });
         }
-      });
-
-      // Enhanced content processing for specific focus modes
+      });      // Enhanced content processing for specific focus modes
       let processedContent = paresedMessage.content;
       if (paresedMessage.focusMode === "code") {
         processedContent = `Code help: ${paresedMessage.content}. Please provide code examples with proper syntax highlighting and explanations.`;
@@ -112,6 +113,8 @@ export const handleMessage = async (
         processedContent = `Search Reddit discussions about: ${paresedMessage.content}`;
       } else if (paresedMessage.focusMode === "writing") {
         processedContent = `Writing assistance for: ${paresedMessage.content}`;
+      } else if (paresedMessage.focusMode === "business" || paresedMessage.focusMode === "businessSearch") {
+        processedContent = `Business and market information about: ${paresedMessage.content}`;
       }
 
       const handler = searchHandlers[paresedMessage.focusMode];

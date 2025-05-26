@@ -52,7 +52,13 @@ interface TodoList {
   updatedAt: Date;
 }
 
-const EnhancedLibrary: React.FC = () => {
+interface EnhancedLibraryProps {
+  sendMessage: (message: string) => void;
+  recentSearches?: string[];
+  onRecentSearchClick?: (query: string) => void;
+}
+
+const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSearches, onRecentSearchClick }) => {
   const [notes, setNotes] = useState<LibraryNote[]>([]);
   const [todoLists, setTodoLists] = useState<TodoList[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -255,6 +261,31 @@ const EnhancedLibrary: React.FC = () => {
             />
           </div>
         </motion.div>
+
+        {/* Recent Global Searches */}
+        {recentSearches && recentSearches.length > 0 && onRecentSearchClick && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+            className="mb-6"
+          >
+            <h3 className="text-sm font-medium text-gray-500 mb-2">Recent Global Searches</h3>
+            <div className="flex flex-wrap gap-2">
+              {recentSearches.map((searchTerm, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  className="bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300 text-gray-600 text-xs h-auto py-1 px-2.5"
+                  onClick={() => onRecentSearchClick(searchTerm)}
+                >
+                  {searchTerm}
+                </Button>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Tabs */}
         <motion.div
@@ -587,4 +618,4 @@ const TodoListCard: React.FC<{
   );
 };
 
-export default EnhancedLibrary; 
+export default EnhancedLibrary;

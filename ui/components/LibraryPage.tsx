@@ -6,6 +6,18 @@ import { MessageSquare, Clock, Search, Filter, MoreVertical, Star, Archive, Tras
 const LibraryPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBy, setFilterBy] = useState("all");
+  const [recentSearches, setRecentSearches] = useState<string[]>([
+    "Latest AI advancements",
+    "Climate change impact on coastal cities",
+    "Future of space tourism",
+  ]);
+
+  // Function to add a new search to recent searches
+  const addRecentSearch = (query: string) => {
+    if (query && !recentSearches.includes(query)) {
+      setRecentSearches(prevSearches => [query, ...prevSearches.slice(0, 4)]); // Keep last 5 searches
+    }
+  };
 
   const recentChats = [
     {
@@ -93,6 +105,11 @@ const LibraryPage = () => {
               placeholder="Search conversations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  addRecentSearch(searchQuery);
+                }
+              }}
               className="w-full bg-gradient-to-r from-[#181c24] to-[#1a1f2e] border border-[#23272f] rounded-xl pl-12 pr-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[#24A0ED]/50 transition-all duration-200"
             />
           </div>
@@ -114,6 +131,27 @@ const LibraryPage = () => {
             </select>
           </div>
         </div>
+
+        {/* Recent Searches Section */}
+        {recentSearches.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-white/80 mb-4">Recent Searches</h2>
+            <div className="flex flex-wrap gap-3">
+              {recentSearches.map((searchTerm, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setSearchQuery(searchTerm);
+                    addRecentSearch(searchTerm); // Optionally move to top on click
+                  }}
+                  className="bg-gradient-to-r from-[#181c24]/70 to-[#1a1f2e]/70 border border-[#23272f]/70 rounded-full px-4 py-2 text-sm text-white/70 hover:text-white hover:border-[#24A0ED]/50 transition-all duration-200"
+                >
+                  {searchTerm}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -213,4 +251,4 @@ const LibraryPage = () => {
   );
 };
 
-export default LibraryPage; 
+export default LibraryPage;

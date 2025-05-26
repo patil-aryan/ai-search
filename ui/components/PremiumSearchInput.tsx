@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Globe, BookOpen, Video, Image as ImageIcon, ChevronDown } from "lucide-react";
+import { Search, Globe, BookOpen, Video, Image as ImageIcon, ChevronDown, TrendingUp } from "lucide-react";
 
 const focusModes = [
   {
@@ -15,6 +15,12 @@ const focusModes = [
     title: "Academic",
     description: "Research papers and studies",
     icon: <BookOpen size={16} />,
+  },
+  {
+    key: "businessSearch",
+    title: "Business",
+    description: "Market news and company info",
+    icon: <TrendingUp size={16} />,
   },
   {
     key: "youtubeSearch",
@@ -120,12 +126,11 @@ const PremiumSearchInput = ({
         {/* Suggestions */}
         <div className="mt-6 text-center">
           <div className="text-sm text-gray-600 mb-3">Try searching for:</div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {[
+          <div className="flex flex-wrap justify-center gap-2">            {[
               "AI latest news",
-              "Climate change solutions", 
-              "Stock market today",
-              "Weather forecast"
+              "Stock market trends", 
+              "Tesla quarterly earnings",
+              "Cryptocurrency analysis"
             ].map((suggestion, index) => (
               <button
                 key={index}

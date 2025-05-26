@@ -1,4 +1,4 @@
-import { CopyPlus, Globe, Pencil, ScanEye, SwatchBook } from "lucide-react";
+import { CopyPlus, Globe, Pencil, ScanEye, SwatchBook, TrendingUp } from "lucide-react";
 import { Switch } from "./ui/switch";
 import { cn } from "@/lib/utils";
 import { SiYoutube, SiReddit } from "@icons-pack/react-simple-icons";
@@ -28,6 +28,12 @@ const focusModes = [
     title: "Academic",
     description: "Search in published academic papers",
     icon: <SwatchBook size={20} />,
+  },
+  {
+    key: "businessSearch",
+    title: "Business",
+    description: "Market news and company information",
+    icon: <TrendingUp size={20} />,
   },
   {
     key: "writingAssistant",
