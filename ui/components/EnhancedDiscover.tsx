@@ -580,15 +580,15 @@ const EnhancedDiscover = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8" style={{ background: 'none' }}>
-      <header className="mb-6 md:mb-8" style={{ background: 'none' }}>
-        <h1 className="text-3xl md:text-4xl font-bold text-neutral-800">Discover</h1>
-        <p className="text-neutral-500 mt-1">Stay updated with the latest trends and information.</p>
+    <div className="min-h-screen p-4 md:p-6 lg:p-8 bg-background">
+      <header className="mb-6 md:mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-foreground">Discover</h1>
+        <p className="text-muted-foreground mt-1">Stay updated with the latest trends and information.</p>
       </header>
 
       <section className="mb-10">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-neutral-700">Live News Updates</h2>
+          <h2 className="text-2xl font-semibold text-foreground">Live News Updates</h2>
         </div>
         {newsError ? (
           <p className="text-center text-red-500 py-8">{newsError}</p>
@@ -618,7 +618,7 @@ const EnhancedDiscover = () => {
               article ? (
                 <Card 
                   key={idx} 
-                  className="border-neutral-200/70 rounded-lg bg-white shadow-sm flex flex-col justify-between transition-all hover:shadow-md overflow-hidden"
+                  className="border-border rounded-lg bg-card shadow-sm flex flex-col justify-between transition-all hover:shadow-md overflow-hidden"
                 >
                   <div>
                     {article.urlToImage && (
@@ -629,16 +629,16 @@ const EnhancedDiscover = () => {
                       />
                     )}
                     <CardHeader className="p-3">
-                      <div className="flex items-center justify-between text-xs text-neutral-500 mb-1">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                         <span className="truncate uppercase tracking-wider">{article.source.name}</span>
                         <span>{formatTimeAgo(article.publishedAt)}</span>
                       </div>
-                      <CardTitle className="font-semibold text-sm text-neutral-800 line-clamp-2 leading-snug hover:text-blue-600 transition-colors">
+                      <CardTitle className="font-semibold text-sm text-foreground line-clamp-2 leading-snug hover:text-primary transition-colors">
                         <a href={article.url} target="_blank" rel="noopener noreferrer">{article.title}</a>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="p-3 pt-0">
-                      <p className="text-xs text-neutral-600 line-clamp-3 leading-relaxed">{article.description}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">{article.description}</p>
                     </CardContent>
                   </div>
                   <div className="p-3 pt-2 mt-auto border-t border-neutral-100">

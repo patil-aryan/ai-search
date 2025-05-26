@@ -48,40 +48,44 @@ const Chat = ({
   }, [messages]);
 
   return (
-    <div className="flex flex-col space-y-6 pt-8 pb-44 lg:pb-32 sm:mx-4 md:mx-8">
-      {messages.map((msg, i) => {
-        const isLast = i === messages.length - 1;
+    <>
+      {/* Main chat content */}
+      <div className="flex flex-col space-y-6 pt-8 pb-32 sm:mx-4 md:mx-8">
+        {messages.map((msg, i) => {
+          const isLast = i === messages.length - 1;
 
-        return (
-          <>
-            <MessageBox
-              key={i}
-              message={msg}
-              history={messages}
-              loading={loading}
-              dividerRef={isLast ? dividerRef : undefined}
-              isLast={isLast}
-              rewrite={rewrite}
-              messageIndex={i}
-              sendMessage={sendMessage}
-            />
-            {!isLast && msg.role === "assistant" && (
-              <div className="h-px w-full bg-[#1C1C1C]" />
-            )}
-          </>
-        );
-      })}
-      {loading && !messageAppeared && <MessageBoxLoading />}
-      <div ref={messageEnd} className="h-0" />
-      {dividerWidth > 0 && (
-        <div
-          className="bottom-24 lg:bottom-0 fixed z-40"
-          style={{ width: dividerWidth }}
-        >
-          <MessageInput sendMessage={sendMessage} loading={loading} />
+          return (
+            <>
+              <MessageBox
+                key={i}
+                message={msg}
+                history={messages}
+                loading={loading}
+                dividerRef={isLast ? dividerRef : undefined}
+                isLast={isLast}
+                rewrite={rewrite}
+                messageIndex={i}
+                sendMessage={sendMessage}
+              />
+              {!isLast && msg.role === "assistant" && (
+                <div className="h-px w-full bg-border" />
+              )}
+            </>
+          );
+        })}
+        {loading && !messageAppeared && <MessageBoxLoading />}
+        <div ref={messageEnd} className="h-0" />
+      </div>
+
+      {/* Fixed bottom input area */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-background via-background/95 to-background/0 pt-8">
+        <div className="container max-w-screen-lg mx-auto px-6 pb-6">
+          <div className="flex justify-center">
+            <MessageInput sendMessage={sendMessage} loading={loading} />
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 };
 

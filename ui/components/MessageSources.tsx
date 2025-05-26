@@ -1,146 +1,148 @@
 import { Document } from "@langchain/core/documents";
 import { Fragment, useState } from "react";
-import {
-  Button,
-  Dialog,
-  DialogPanel,
-  DialogTitle,
-  Transition,
-  TransitionChild,
-} from "@headlessui/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ExternalLink, MoreHorizontal } from "lucide-react";
 
 const MessageSources = ({ sources }: { sources: Document[] }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  function closeModal() {
-    setIsDialogOpen(false);
-    document.body.classList.remove("overflow-hidden-scrollable");
-  }
-
-  function openModal() {
-    setIsDialogOpen(true);
-    document.body.classList.add("overflow-hidden-scrollable");
-  }
   return (
-    <div className="grid gridc-cols-2 lg:grid-cols-4 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       {sources.slice(0, 3).map((source, i) => (
-        <a
-          href={source.metadata.url}
-          key={i}
-          target="_blank"
-          className="bg-[#111111] hover:bg-[#1c1c1c] transition duration-200 rounded-lg p-3 flex flex-col space-y-2 font-medium"
-        >
-          <p className="text-white text-xs overflow-hidden whitespace-nowrap text-ellipsis">
-            {source.metadata.title}
-          </p>
-          <div className="flex flex-row items-center justify-between">
-            <div className="flex flex-row items-center space-x-1">
-              <img
-                src={`https://s2.googleusercontent.com/s2/favicons?domain_url=${source.metadata.url}`}
-                width={16}
-                height={16}
-                alt="favicon"
-                className="rounded-lg h-4 w-4"
-                key={i}
-              />
-              <p className="text-xs text-white/50 overflow-hidden whitespace-nowrap text-ellipsis">
-                {source.metadata.url.replace(/.+\/\/|www.|\..+/g, "")}
-              </p>
-            </div>
-            <div className="flex flex-row items-center space-x-1 text-white/50 text-xs">
-              <div className="bg-white/50 h-[4px] w-[4px] rounded-full"></div>
-              <span>{i + 1}</span>
-            </div>
-          </div>
-        </a>
+        <Card key={i} className="group hover:shadow-lg transition-all duration-200 border-border bg-card hover:border-primary/30">
+          <CardContent className="p-3">
+            <a
+              href={source.metadata.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col space-y-2 text-decoration-none"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-2 min-w-0 flex-1">
+                  <Avatar className="h-4 w-4 flex-shrink-0">
+                    <AvatarImage 
+                      src={`https://s2.googleusercontent.com/s2/favicons?domain_url=${source.metadata.url}`} 
+                      alt="favicon"
+                    />
+                    <AvatarFallback className="text-[6px] bg-muted text-muted-foreground">
+                      {source.metadata.url.replace(/.+\/\/|www.|\..+/g, "").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-xs text-muted-foreground font-medium truncate">
+                    {source.metadata.url.replace(/.+\/\/|www.|\..+/g, "")}
+                  </span>
+                </div>
+                <Badge variant="secondary" className="ml-1 text-xs h-5 bg-primary/10 text-primary border-0">
+                  {i + 1}
+                </Badge>
+              </div>
+              
+              <div className="space-y-1">
+                <h4 className="text-xs font-medium text-card-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                  {source.metadata.title}
+                </h4>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground flex items-center hover:text-primary transition-colors">
+                    <ExternalLink className="w-2.5 h-2.5 mr-1" />
+                    Visit
+                  </span>
+                </div>
+              </div>
+            </a>
+          </CardContent>
+        </Card>
       ))}
+      
       {sources.length > 3 && (
-        <button
-          onClick={openModal}
-          className="
-      bg-gradient-to-br from-[#1a1f2e] to-[#181c24] hover:from-[#23272f] hover:to-[#1f242e] transition-all duration-200 rounded-lg px-4 py-2 flex flex-col justify-between space-y-2 border border-[#23272f]/50 hover:border-[#24A0ED]/20"
-        >
-          <div className="flex flex-row items-center space-x-1">
-            {sources.slice(3, 6).map((source, i) => (
-              <img
-                src={`https://s2.googleusercontent.com/s2/favicons?domain_url=${source.metadata.url}`}
-                width={16}
-                height={16}
-                alt="favicon"
-                className="rounded-lg h-4 w-4"
-                key={i}
-              />
-            ))}
-          </div>
-          <p className="text-xs text-white/50">
-            View {sources.length - 3} more
-          </p>
-        </button>
-      )}
-      <Transition appear show={isDialogOpen} as={Fragment}>
-        <Dialog as="div" className={"relative z-50"} onClose={closeModal}>
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-200"
-                enterFrom="opacity-0 scale-95"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-100"
-                leaveFrom="opacity-100 scale-200"
-                leaveTo="opacity-0 scale-95"
-              >                <Dialog.Panel
-                  className={
-                    "w-full max-w-md transform rounded-2xl bg-gradient-to-br from-[#181c24] to-[#1a1f2e] border border-[#23272f] p-6 text-left align-middle shadow-2xl backdrop-blur-sm transition-all"
-                  }
-                >
-                  <Dialog.Title
-                    className={"text-lg font-medium leading-6 text-white"}
-                  >
-                    Sources
-                  </Dialog.Title>
-                  <div className="grid grid-cols-2 gap-2 overflow-auto max-h-[300px] mt-2 pr-2">
-                    {sources.map((source, i) => (
-                      <a
-                        href={source.metadata.url}
-                        key={i}
-                        target="_blank"
-                        className="bg-gradient-to-br from-[#1a1f2e] to-[#181c24] hover:from-[#23272f] hover:to-[#1f242e] transition-all duration-200 rounded-lg p-3 flex flex-col space-y-2 font-medium border border-[#23272f]/50 hover:border-[#24A0ED]/20"
-                      >
-                        <p className="text-white text-xs overflow-hidden whitespace-nowrap text-ellipsis">
-                          {source.metadata.title}
-                        </p>
-                        <div className="flex flex-row items-center justify-between">
-                          <div className="flex flex-row items-center space-x-1">
-                            <img
-                              src={`https://s2.googleusercontent.com/s2/favicons?domain_url=${source.metadata.url}`}
-                              width={16}
-                              height={16}
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Card className="group hover:shadow-lg transition-all duration-200 border-border bg-accent/30 hover:bg-accent/50 cursor-pointer">
+              <CardContent className="p-3 flex flex-col justify-center items-center space-y-2 h-full">
+                <div className="flex items-center space-x-1">
+                  {sources.slice(3, 6).map((source, i) => (
+                    <Avatar key={i} className="h-3 w-3">
+                      <AvatarImage 
+                        src={`https://s2.googleusercontent.com/s2/favicons?domain_url=${source.metadata.url}`} 
+                        alt="favicon"
+                      />
+                      <AvatarFallback className="text-[5px] bg-muted text-muted-foreground">
+                        {source.metadata.url.replace(/.+\/\/|www.|\..+/g, "").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {sources.length > 6 && (
+                    <MoreHorizontal className="w-3 h-3 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+                    +{sources.length - 3} more
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          
+          <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-semibold text-foreground">
+                All Sources ({sources.length})
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-auto max-h-[500px] pr-2">
+              {sources.map((source, i) => (
+                <Card key={i} className="group hover:shadow-lg transition-all duration-200 border-border bg-card hover:border-primary/30">
+                  <CardContent className="p-3">
+                    <a
+                      href={source.metadata.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-col space-y-2 text-decoration-none"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                          <Avatar className="h-4 w-4 flex-shrink-0">
+                            <AvatarImage 
+                              src={`https://s2.googleusercontent.com/s2/favicons?domain_url=${source.metadata.url}`} 
                               alt="favicon"
-                              className="rounded-lg h-4 w-4"
-                              key={i}
                             />
-                            <p className="text-xs text-white/50 overflow-hidden whitespace-nowrap text-ellipsis">
-                              {source.metadata.url.replace(
-                                /.+\/\/|www.|\..+/g,
-                                ""
-                              )}
-                            </p>
-                          </div>
-                          <div className="flex flex-row items-center space-x-1 text-white/50 text-xs">
-                            <div className="bg-white/50 h-[4px] w-[4px] rounded-full"></div>
-                            <span>{i + 1}</span>
-                          </div>
+                            <AvatarFallback className="text-[6px] bg-muted text-muted-foreground">
+                              {source.metadata.url.replace(/.+\/\/|www.|\..+/g, "").charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs text-muted-foreground font-medium truncate">
+                            {source.metadata.url.replace(/.+\/\/|www.|\..+/g, "")}
+                          </span>
                         </div>
-                      </a>
-                    ))}
-                  </div>
-                </Dialog.Panel>
-              </Transition.Child>
+                        <Badge variant="secondary" className="ml-2 text-xs h-5 bg-primary/10 text-primary border-0">
+                          {i + 1}
+                        </Badge>
+                      </div>
+                      
+                      <h4 className="text-sm font-medium text-card-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors">
+                        {source.metadata.title}
+                      </h4>
+                      
+                      <div className="flex items-center">
+                        <span className="text-xs text-muted-foreground flex items-center hover:text-primary transition-colors">
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          Visit source
+                        </span>
+                      </div>
+                    </a>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </div>
+          </DialogContent>
         </Dialog>
-      </Transition>
+      )}
     </div>
   );
 };

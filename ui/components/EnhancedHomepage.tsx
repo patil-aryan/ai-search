@@ -707,15 +707,15 @@ const EnhancedHomepage = ({
           <CardContent className="pt-0">
             <div className="h-32 w-full">
               {validData && validData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={validData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                    <defs>
+                  <defs>
                       <linearGradient id="colorCryptoHome" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis 
                       dataKey="time" 
                       axisLine={false} 
@@ -750,8 +750,8 @@ const EnhancedHomepage = ({
                       strokeWidth={2} 
                       fill="url(#colorCryptoHome)" 
                     />
-                  </AreaChart>
-                </ResponsiveContainer>
+                </AreaChart>
+              </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-neutral-400 text-xs">
                   Chart data unavailable
