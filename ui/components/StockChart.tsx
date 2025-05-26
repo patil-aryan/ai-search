@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,15 +22,19 @@ interface StockChartProps {
 const generateHistoricalData = (currentPrice: number, change: number) => {
   const data = [];
   const basePrice = currentPrice - change;
-  
+  // Ensure basePrice is a valid number, default to currentPrice if change is problematic
+  const validBasePrice = isNaN(basePrice) ? currentPrice : basePrice;
+
   for (let i = 0; i < 24; i++) {
     const hour = i;
-    const variance = (Math.random() - 0.5) * (currentPrice * 0.02);
-    const price = basePrice + (change * (i / 23)) + variance;
+    // Ensure variance calculation doesn't lead to NaN if currentPrice is 0
+    const variance = (Math.random() - 0.5) * (currentPrice * 0.02 || 0.01); 
+    // Ensure change multiplication is valid
+    const price = validBasePrice + (change * (i / 23) || 0) + variance;
     
     data.push({
       time: `${hour.toString().padStart(2, '0')}:00`,
-      price: Math.max(price, 0),
+      price: Math.max(price, 0), // Ensure price is not negative
       volume: Math.floor(Math.random() * 1000000) + 500000,
     });
   }
@@ -39,7 +43,21 @@ const generateHistoricalData = (currentPrice: number, change: number) => {
 };
 
 const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
-  if (!stocks || stocks.length === 0) {
+  // Memoize chart data to prevent flickering on re-renders
+  const chartData = useMemo(() => {
+    if (!stocks || stocks.length === 0 || !stocks[0] || typeof stocks[0].price !== 'number' || typeof stocks[0].change !== 'number') {
+      // Return a default structure or empty array if primary stock data is invalid to prevent errors
+      return Array.from({ length: 24 }, (_, i) => ({
+        time: `${i.toString().padStart(2, '0')}:00`,
+        price: 0,
+        volume: 0,
+      }));
+    }
+    const primaryStock = stocks[0];
+    return generateHistoricalData(primaryStock.price, primaryStock.change);
+  }, [stocks]);
+
+  if (!stocks || stocks.length === 0 || !stocks[0]) {
     return (
       <Card className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
         <CardHeader>
@@ -57,7 +75,6 @@ const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
 
   // Get the first stock for the main chart
   const primaryStock = stocks[0];
-  const chartData = generateHistoricalData(primaryStock.price, primaryStock.change);
 
   return (
     <div className="space-y-4">
@@ -118,7 +135,8 @@ const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 10, fill: '#64748b' }}
-                  domain={['dataMin - 1', 'dataMax + 1']}
+                  domain={['auto', 'auto']} // Let recharts auto-calculate domain
+                  tickFormatter={(value) => `$${Number(value).toLocaleString()}`} // Format Y-axis ticks as currency
                 />
                 <Tooltip 
                   contentStyle={{
@@ -180,4 +198,4 @@ const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
   );
 };
 
-export default StockChart; 
+export default StockChart;

@@ -15,7 +15,8 @@ import {
   Archive,
   Filter,
   Calendar,
-  Clock
+  Clock,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -52,6 +53,13 @@ interface TodoList {
   updatedAt: Date;
 }
 
+interface ChatHistoryItem {
+  id: string;
+  query: string;
+  response: string;
+  timestamp: Date;
+}
+
 interface EnhancedLibraryProps {
   sendMessage: (message: string) => void;
   recentSearches?: string[];
@@ -61,8 +69,9 @@ interface EnhancedLibraryProps {
 const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSearches, onRecentSearchClick }) => {
   const [notes, setNotes] = useState<LibraryNote[]>([]);
   const [todoLists, setTodoLists] = useState<TodoList[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"notes" | "todos">("notes");
+  const [activeTab, setActiveTab] = useState<"notes" | "todos" | "chat">("notes");
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [editingTodo, setEditingTodo] = useState<string | null>(null);
   const [newNoteTitle, setNewNoteTitle] = useState("");
@@ -74,6 +83,7 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
   useEffect(() => {
     const savedNotes = localStorage.getItem("futuresearch_notes");
     const savedTodos = localStorage.getItem("futuresearch_todos");
+    const savedChatHistory = localStorage.getItem("futuresearch_chat_history");
     
     if (savedNotes) {
       try {
@@ -105,6 +115,42 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
         console.error("Error loading todos:", error);
       }
     }
+
+    if (savedChatHistory) {
+      try {
+        const parsedChatHistory = JSON.parse(savedChatHistory).map((chat: any) => ({
+          ...chat,
+          timestamp: new Date(chat.timestamp)
+        }));
+        setChatHistory(parsedChatHistory);
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+      }
+    } else {
+      // Add some demo data if no chat history exists
+      const demoChatHistory: ChatHistoryItem[] = [
+        {
+          id: "demo-1",
+          query: "What are the latest trends in artificial intelligence?",
+          response: "AI is rapidly evolving with several key trends: Large Language Models (LLMs) like GPT-4 are becoming more sophisticated and multimodal, able to process text, images, and audio. Edge AI is growing, bringing AI processing to local devices for better privacy and reduced latency. AI in healthcare is accelerating drug discovery and diagnostic accuracy. Autonomous systems are advancing in transportation and robotics. AI ethics and responsible AI development are becoming critical focus areas as the technology becomes more pervasive.",
+          timestamp: new Date(Date.now() - 3600000) // 1 hour ago
+        },
+        {
+          id: "demo-2", 
+          query: "How does quantum computing work?",
+          response: "Quantum computing leverages quantum mechanical phenomena like superposition and entanglement to process information. Unlike classical bits that are either 0 or 1, quantum bits (qubits) can exist in multiple states simultaneously through superposition. This allows quantum computers to perform many calculations in parallel. Entanglement creates correlations between qubits that can be used for complex computations. Key applications include cryptography, drug discovery, financial modeling, and optimization problems that are intractable for classical computers.",
+          timestamp: new Date(Date.now() - 7200000) // 2 hours ago
+        },
+        {
+          id: "demo-3",
+          query: "Explain blockchain technology and its applications",
+          response: "Blockchain is a distributed ledger technology that maintains a continuously growing list of records (blocks) linked using cryptography. Each block contains a hash of the previous block, timestamp, and transaction data. This creates an immutable record that's resistant to modification. Applications include cryptocurrencies (Bitcoin, Ethereum), smart contracts, supply chain tracking, digital identity verification, voting systems, and decentralized finance (DeFi). The technology provides transparency, security, and removes the need for central authorities in many processes.",
+          timestamp: new Date(Date.now() - 10800000) // 3 hours ago
+        }
+      ];
+      setChatHistory(demoChatHistory);
+      localStorage.setItem('futuresearch_chat_history', JSON.stringify(demoChatHistory));
+    }
   }, []);
 
   // Save data to localStorage
@@ -115,6 +161,10 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
   useEffect(() => {
     localStorage.setItem("futuresearch_todos", JSON.stringify(todoLists));
   }, [todoLists]);
+
+  useEffect(() => {
+    localStorage.setItem("futuresearch_chat_history", JSON.stringify(chatHistory));
+  }, [chatHistory]);
 
   // Note functions
   const createNote = () => {
@@ -219,6 +269,25 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
     setTodoLists(prev => prev.filter(list => list.id !== id));
   };
 
+  // Chat history functions
+  const addChatHistory = (query: string, response: string) => {
+    const newChatItem: ChatHistoryItem = {
+      id: Date.now().toString(),
+      query,
+      response,
+      timestamp: new Date()
+    };
+    setChatHistory(prev => [newChatItem, ...prev].slice(0, 50)); // Keep only last 50 chats
+  };
+
+  const deleteChatHistory = (id: string) => {
+    setChatHistory(prev => prev.filter(chat => chat.id !== id));
+  };
+
+  const clearChatHistory = () => {
+    setChatHistory([]);
+  };
+
   // Filter data
   const filteredNotes = notes.filter(note =>
     note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -228,6 +297,11 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
   const filteredTodoLists = todoLists.filter(list =>
     list.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     list.items.some(item => item.text.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredChatHistory = chatHistory.filter(chat =>
+    chat.query.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    chat.response.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -293,7 +367,7 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
         >
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "notes" | "todos")}>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "notes" | "todos" | "chat")}>
             <TabsList className="bg-gray-100 border-0">
               <TabsTrigger value="notes" className="data-[state=active]:bg-black data-[state=active]:text-white">
                 <FileText className="w-4 h-4 mr-2" />
@@ -302,6 +376,10 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
               <TabsTrigger value="todos" className="data-[state=active]:bg-black data-[state=active]:text-white">
                 <CheckSquare className="w-4 h-4 mr-2" />
                 Todos ({todoLists.length})
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="data-[state=active]:bg-black data-[state=active]:text-white">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Chat History ({chatHistory.length})
               </TabsTrigger>
             </TabsList>
 
@@ -427,6 +505,123 @@ const EnhancedLibrary: React.FC<EnhancedLibraryProps> = ({ sendMessage, recentSe
                         onDeleteItem={(itemId) => deleteTodoItem(todoList.id, itemId)}
                         onDeleteList={() => deleteTodoList(todoList.id)}
                       />
+                    ))}
+                  </div>
+                )}
+              </AnimatePresence>
+            </TabsContent>
+
+            {/* Chat History Tab */}
+            <TabsContent value="chat" className="mt-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="mb-6"
+              >
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-black">Chat History</h3>
+                  {chatHistory.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearChatHistory}
+                      className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clear All
+                    </Button>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Your conversation history and AI responses
+                </p>
+              </motion.div>
+
+              <AnimatePresence>
+                {filteredChatHistory.length === 0 ? (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-center py-12"
+                  >
+                    <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">
+                      {chatHistory.length === 0 
+                        ? "No chat history yet. Start a conversation to see it here."
+                        : "No chats match your search."}
+                    </p>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredChatHistory.map((chat, index) => (
+                      <motion.div
+                        key={chat.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: index * 0.05 }}
+                        layout
+                      >
+                        <Card className="p-4 border border-gray-200 hover:border-gray-300 transition-all duration-200 group">
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 border-blue-200">
+                                    Query
+                                  </Badge>
+                                  <span className="text-xs text-gray-400">
+                                    {chat.timestamp.toLocaleDateString()} {chat.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <p className="font-medium text-black text-sm leading-relaxed mb-3">
+                                  {chat.query}
+                                </p>
+                                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Badge variant="secondary" className="text-xs px-2 py-0.5 bg-green-100 text-green-700 border-green-200">
+                                      AI Response
+                                    </Badge>
+                                  </div>
+                                  <p className="text-gray-700 text-sm leading-relaxed line-clamp-4">
+                                    {chat.response}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity ml-3">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => deleteChatHistory(chat.id)}
+                                  className="h-8 w-8 p-0 text-red-500 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => sendMessage(chat.query)}
+                                className="text-xs px-3 py-1 h-auto border-gray-200 hover:bg-gray-50"
+                              >
+                                Ask Again
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(chat.response);
+                                }}
+                                className="text-xs px-3 py-1 h-auto border-gray-200 hover:bg-gray-50"
+                              >
+                                Copy Response
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      </motion.div>
                     ))}
                   </div>
                 )}

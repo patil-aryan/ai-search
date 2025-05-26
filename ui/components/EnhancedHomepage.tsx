@@ -178,58 +178,179 @@ const EnhancedHomepage = ({
     }
   };
 
-  // Fetch real news data from all APIs and fallback
-  const fetchNews = async () => {
+  // News API cache for homepage
+  const newsCache = useState<{ [key: string]: { data: NewsItem[], timestamp: number } }>(() => {
     try {
-      // Try NewsService.getTopHeadlines
-      let news: any[] = [];
+      const cached = localStorage.getItem('futuresearch_homepage_news_cache');
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  })[0];
+
+  const NEWS_API_KEYS = [
+    process.env.NEXT_PUBLIC_NEWS_API_KEY,
+    process.env.NEXT_PUBLIC_NEWS_API_KEY_2,
+    process.env.NEXT_PUBLIC_NEWS_API_KEY_3,
+    process.env.NEXT_PUBLIC_NEWS_API_KEY_4
+  ].filter(Boolean);
+
+  const [currentNewsApiKeyIndex, setCurrentNewsApiKeyIndex] = useState<number>(0);
+
+  // Fetch real news data using the same system as EnhancedDiscover
+  const fetchNews = async () => {
+    // Check cache first (10 minutes)
+    const cacheKey = 'us_headlines_homepage';
+    const cached = newsCache[cacheKey];
+    if (cached && Date.now() - cached.timestamp < 10 * 60 * 1000 && cached.data.length >= 5) {
+      setNews(cached.data.slice(0, 5));
+      return;
+    }
+
+    let attempts = 0;
+    let lastError: Error | null = null;
+
+    while (attempts < NEWS_API_KEYS.length) {
       try {
-        const mod = await import("@/lib/api-services");
-        if (mod && mod.NewsService) {
-          // Get top headlines (US, general)
-          const headlines = await mod.NewsService.getTopHeadlines("us");
-          news = headlines;
+        const apiKey = NEWS_API_KEYS[(currentNewsApiKeyIndex + attempts) % NEWS_API_KEYS.length];
+        if (!apiKey) {
+          attempts++;
+          continue;
         }
-      } catch (err) {
-        console.error("NewsService.getTopHeadlines failed:", err);
-      }
-      // Try NewsService.searchNews for trending topics
-      try {
-        const mod = await import("@/lib/api-services");
-        if (mod && mod.NewsService) {
-          const searchResults = await mod.NewsService.searchNews("trending");
-          if (Array.isArray(searchResults)) {
-            // Merge and deduplicate by title
-            const titles = new Set(news.map((n: any) => n.title));
-            for (const n of searchResults) {
-              if (!titles.has(n.title)) news.push(n);
-            }
+
+        const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&pageSize=10&apiKey=${apiKey}`);
+        
+        if (!response.ok) {
+          if (response.status === 429) {
+            console.warn(`Homepage News API key ${attempts + 1} rate limited, trying next key...`);
+            attempts++;
+            continue;
+          }
+          throw new Error(`News API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.status === 'error') {
+          throw new Error(`News API error: ${data.message}`);
+        }
+
+        let articles = (data?.articles || [])
+          .filter((article: any) => 
+            article?.title && 
+            article?.description && 
+            !article.title.includes('[Removed]') &&
+            article.description !== '[Removed]'
+          )
+          .map((article: any) => ({
+            title: article.title,
+            description: article.description,
+            url: article.url,
+            urlToImage: article.urlToImage,
+            publishedAt: article.publishedAt,
+            source: article.source,
+            category: 'general'
+          }));
+
+        // Cache successful result in both homepage and discover caches
+        if (articles.length >= 6) {
+          newsCache[cacheKey] = { data: articles, timestamp: Date.now() };
+          localStorage.setItem('futuresearch_homepage_news_cache', JSON.stringify(newsCache));
+          
+          // Also update discover page cache for cross-compatibility
+          try {
+            const discoverCache = localStorage.getItem('futuresearch_news_cache') || '{}';
+            const parsedDiscoverCache = JSON.parse(discoverCache);
+            parsedDiscoverCache['us_headlines'] = { data: articles, timestamp: Date.now() };
+            localStorage.setItem('futuresearch_news_cache', JSON.stringify(parsedDiscoverCache));
+          } catch (e) {
+            console.error('Error updating discover cache:', e);
           }
         }
-      } catch (err) {
-        console.error("NewsService.searchNews failed:", err);
+
+        setNews(articles.slice(0, 5));
+        
+        // Update API key index for next request
+        setCurrentNewsApiKeyIndex((currentNewsApiKeyIndex + attempts) % NEWS_API_KEYS.length);
+        return;
+
+      } catch (error) {
+        lastError = error as Error;
+        attempts++;
       }
-      // Fallback if still not enough news
-      if (!news || news.length < 6) {
-        try {
-          const mod = await import("@/lib/api-services");
-          if (mod && mod.NewsService) {
-            const fallback = mod.NewsService["getFallbackNews"]?.();
-            if (Array.isArray(fallback)) {
-              const titles = new Set(news.map((n: any) => n.title));
-              for (const n of fallback) {
-                if (!titles.has(n.title)) news.push(n);
-              }
-            }
+    }
+
+    // All API keys failed, use cache or fallback to real news from localStorage
+    if (cached && cached.data.length > 0) {
+      setNews(cached.data.slice(0, 5));
+      console.warn('Using cached news due to API rate limits');
+    } else {
+      // Try to get real cached news from other sources (like discover page cache)
+      try {
+        const discoverNewsCache = localStorage.getItem('futuresearch_news_cache');
+        if (discoverNewsCache) {
+          const parsedCache = JSON.parse(discoverNewsCache);
+          const realNews = parsedCache['us_headlines']?.data || [];
+          if (realNews.length > 0) {
+            setNews(realNews.slice(0, 5));
+            console.warn('Using real cached news from discover page');
+            return;
           }
-        } catch (err) {
-          console.error("NewsService.getFallbackNews failed:", err);
         }
+      } catch (e) {
+        console.error('Error accessing discover news cache:', e);
       }
-      setNews(news.slice(0, 8));
-    } catch (error) {
-      console.error("News fetch error:", error);
-      setNews([]);
+
+      // Final fallback to mock news
+      const fallbackNews: NewsItem[] = [
+        {
+          title: "Technology Market Shows Strong Growth Amid Innovation Wave",
+          description: "Major tech companies report robust earnings as artificial intelligence drives new opportunities.",
+          url: "https://example.com/tech-growth",
+          urlToImage: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?w=400&h=200&fit=crop",
+          publishedAt: new Date().toISOString(),
+          source: { name: "TechNews" },
+          category: "Technology"
+        },
+        {
+          title: "Global Climate Summit Reaches Historic Agreement",
+          description: "World leaders announce unprecedented commitments to renewable energy transition.",
+          url: "https://example.com/climate-summit",
+          urlToImage: "https://images.unsplash.com/photo-1569163139394-de44cb8ba2d3?w=400&h=200&fit=crop",
+          publishedAt: new Date(Date.now() - 1800000).toISOString(),
+          source: { name: "Global News" },
+          category: "Environment"
+        },
+        {
+          title: "Healthcare Innovation Breakthrough in Medical Research",
+          description: "New treatment methods show promising results in clinical trials.",
+          url: "https://example.com/health-breakthrough",
+          urlToImage: "https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=200&fit=crop",
+          publishedAt: new Date(Date.now() - 3600000).toISOString(),
+          source: { name: "HealthWatch" },
+          category: "Health"
+        },
+        {
+          title: "Financial Markets Rally on Economic Recovery Signs",
+          description: "Stock markets reach new highs as investors show confidence in economic indicators.",
+          url: "https://example.com/finance-rally",
+          urlToImage: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&h=200&fit=crop",
+          publishedAt: new Date(Date.now() - 5400000).toISOString(),
+          source: { name: "FinanceDaily" },
+          category: "Business"
+        },
+        {
+          title: "Space Exploration Reaches New Milestone",
+          description: "Private space companies achieve breakthrough in satellite deployment technology.",
+          url: "https://example.com/space-milestone",
+          urlToImage: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=400&h=200&fit=crop",
+          publishedAt: new Date(Date.now() - 7200000).toISOString(),
+          source: { name: "SpaceToday" },
+          category: "Science"
+        }
+      ];
+      
+      setNews(fallbackNews.slice(0, 5));
+      console.warn(`All homepage news API keys exhausted. ${lastError?.message || 'Using fallback news.'}`);
     }
   };
 
@@ -259,18 +380,29 @@ const EnhancedHomepage = ({
         } catch (error) {
           console.error(`Stock error for ${symbol}:`, error);
           // Return fallback data
-          return { 
-            symbol, 
-            price: Math.random() * 200 + 100, 
-            change: (Math.random() - 0.5) * 10, 
-            changePercent: (Math.random() - 0.5) * 5, 
+          return {
+            symbol,
+            price: Math.random() * 200 + 100,
+            change: (Math.random() - 0.5) * 10,
+            changePercent: (Math.random() - 0.5) * 5,
             name: symbol === 'AAPL' ? 'Apple' : symbol === 'GOOGL' ? 'Google' : symbol === 'MSFT' ? 'Microsoft' : symbol === 'TSLA' ? 'Tesla' : 'NVIDIA'
           };
         }
       });
 
       const stockData = await Promise.all(stockPromises);
-      setStocks(stockData);
+      // If API returns empty array, set fallback data
+      if (!stockData || stockData.length === 0) {
+        setStocks([
+          { symbol: 'AAPL', price: 175.43, change: 2.15, changePercent: 1.24, name: 'Apple' },
+          { symbol: 'GOOGL', price: 142.56, change: -1.23, changePercent: -0.85, name: 'Google' },
+          { symbol: 'MSFT', price: 378.85, change: 4.67, changePercent: 1.25, name: 'Microsoft' },
+          { symbol: 'TSLA', price: 248.42, change: -3.21, changePercent: -1.27, name: 'Tesla' },
+          { symbol: 'NVDA', price: 875.28, change: 12.45, changePercent: 1.44, name: 'NVIDIA' }
+        ]);
+      } else {
+        setStocks(stockData);
+      }
     } catch (error) {
       console.error("Error fetching stocks:", error);
       // Set fallback stock data
@@ -284,16 +416,110 @@ const EnhancedHomepage = ({
     }
   };
 
-  // Fetch crypto data
+  // Fetch crypto data with enhanced error handling and sparkline support
   const fetchCrypto = async () => {
     try {
-      const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false');
-      if (!response.ok) throw new Error('Crypto API error');
+      const COINGECKO_API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY;
+      const apiUrl = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=true&price_change_percentage=24h${COINGECKO_API_KEY ? `&x_cg_demo_api_key=${COINGECKO_API_KEY}` : ''}`;
+      
+      console.log('Fetching crypto data from CoinGecko API...');
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.warn(`CoinGecko API error: ${response.status} ${errorBody}`);
+        throw new Error(`Crypto API error: ${response.status}`);
+      }
+      
       const data = await response.json();
-      setCrypto(data);
+      
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.warn('CoinGecko returned empty or invalid data, using fallback');
+        throw new Error('Empty crypto data');
+      }
+
+      // Process and validate the data
+      const processedData = data.map(coin => ({
+        ...coin,
+        sparkline_in_7d: coin.sparkline_in_7d || { price: [] },
+        price_change_percentage_24h: coin.price_change_percentage_24h || 0
+      }));
+
+      console.log('Successfully fetched crypto data:', processedData.length, 'items');
+      setCrypto(processedData);
+      
     } catch (error) {
       console.error('Crypto fetch error:', error);
-      setCrypto([]);
+      
+      // Enhanced fallback data with sparkline
+      const generateSparkline = (basePrice: number) => {
+        return Array.from({ length: 168 }, (_, i) => {
+          const volatility = 0.05; // 5% volatility
+          const trend = (Math.random() - 0.5) * 0.002; // Small trend
+          return basePrice * (1 + (Math.random() - 0.5) * volatility + trend * i);
+        });
+      };
+
+      const fallbackCrypto = [
+        { 
+          id: 'bitcoin', 
+          name: 'Bitcoin', 
+          symbol: 'btc', 
+          current_price: 67000, 
+          price_change_percentage_24h: 2.1, 
+          market_cap: 1200000000000, 
+          total_volume: 35000000000, 
+          image: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',
+          sparkline_in_7d: { price: generateSparkline(67000) }
+        },
+        { 
+          id: 'ethereum', 
+          name: 'Ethereum', 
+          symbol: 'eth', 
+          current_price: 3200, 
+          price_change_percentage_24h: 1.5, 
+          market_cap: 400000000000, 
+          total_volume: 18000000000, 
+          image: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png',
+          sparkline_in_7d: { price: generateSparkline(3200) }
+        },
+        { 
+          id: 'solana', 
+          name: 'Solana', 
+          symbol: 'sol', 
+          current_price: 150, 
+          price_change_percentage_24h: -0.8, 
+          market_cap: 65000000000, 
+          total_volume: 2500000000, 
+          image: 'https://assets.coingecko.com/coins/images/4128/large/solana.png',
+          sparkline_in_7d: { price: generateSparkline(150) }
+        },
+        { 
+          id: 'binancecoin', 
+          name: 'BNB', 
+          symbol: 'bnb', 
+          current_price: 420, 
+          price_change_percentage_24h: 0.8, 
+          market_cap: 62000000000, 
+          total_volume: 1800000000, 
+          image: 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png',
+          sparkline_in_7d: { price: generateSparkline(420) }
+        },
+        { 
+          id: 'cardano', 
+          name: 'Cardano', 
+          symbol: 'ada', 
+          current_price: 0.45, 
+          price_change_percentage_24h: -1.2, 
+          market_cap: 16000000000, 
+          total_volume: 600000000, 
+          image: 'https://assets.coingecko.com/coins/images/975/large/cardano.png',
+          sparkline_in_7d: { price: generateSparkline(0.45) }
+        }
+      ];
+      
+      setCrypto(fallbackCrypto);
+      console.log('Set enhanced fallback crypto data with sparklines');
     }
   };
 
@@ -390,13 +616,65 @@ const EnhancedHomepage = ({
   };
 
   const CryptoChart = ({ crypto }: { crypto: any[] }) => {
-    if (!crypto.length) return <p className="text-xs text-neutral-400">Loading crypto data...</p>;
-    // Use recharts AreaChart for the first coin (BTC)
-    const btc = crypto[0];
-    const chartData = Array.from({ length: 24 }, (_, i) => ({
-      time: `${i}:00`,
-      price: btc.current_price * (1 + (Math.random() - 0.5) * 0.02),
-    }));
+    console.log('CryptoChart received crypto data:', crypto?.length || 0, 'coins'); // Debug log
+    
+    if (!crypto || crypto.length === 0) {
+      return (
+        <div className="space-y-4">
+          <Card className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
+            <CardContent className="p-4 flex items-center justify-center h-32">
+              <p className="text-xs text-neutral-400">Loading crypto data...</p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // Use the first coin (usually Bitcoin) for the main chart
+    const primaryCoin = crypto[0];
+    console.log('Primary coin for chart:', primaryCoin?.name, 'price:', primaryCoin?.current_price); // Debug log
+    
+    // Generate chart data - always ensure we have valid data
+    let chartData = [];
+    
+    if (primaryCoin?.sparkline_in_7d?.price && Array.isArray(primaryCoin.sparkline_in_7d.price) && primaryCoin.sparkline_in_7d.price.length > 0) {
+      // Use actual sparkline data (7 days worth, sample every few hours for cleaner chart)
+      const sparklineData = primaryCoin.sparkline_in_7d.price;
+      const sampleSize = Math.min(24, sparklineData.length); // 24 points max
+      const step = Math.max(1, Math.floor(sparklineData.length / sampleSize));
+      
+      chartData = Array.from({ length: sampleSize }, (_, i) => ({
+        time: `${i}h`,
+        price: Number(sparklineData[i * step]) || Number(primaryCoin.current_price) || 50000,
+      }));
+      console.log('✅ Using real sparkline data, chart points:', chartData.length); // Debug log
+    } else {
+      // Fallback to generated data based on current price
+      const basePrice = Number(primaryCoin?.current_price) || 50000; // Default fallback price
+      chartData = Array.from({ length: 24 }, (_, i) => ({
+        time: `${i}h`,
+        price: basePrice * (1 + (Math.random() - 0.5) * 0.02),
+      }));
+      console.log('⚠️ Using generated fallback data, base price:', basePrice); // Debug log
+    }
+
+    // Validate chart data
+    const validData = chartData.filter(point => 
+      point && typeof point.price === 'number' && !isNaN(point.price) && point.price > 0
+    );
+    
+    if (validData.length === 0) {
+      console.error('❌ No valid chart data available');
+      // Create minimal fallback data
+      validData.push(
+        { time: '0h', price: 50000 },
+        { time: '12h', price: 51000 },
+        { time: '24h', price: 49500 }
+      );
+    }
+
+    console.log('📊 Final chart data points:', validData.length, 'first 3:', validData.slice(0, 3)); // Debug
+
     return (
       <div className="space-y-4">
         <Card className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
@@ -404,45 +682,118 @@ const EnhancedHomepage = ({
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold text-black flex items-center gap-2">
                 <DollarSign className="w-4 h-4" />
-                {btc.name} ({btc.symbol.toUpperCase()})
+                {primaryCoin.name || 'Unknown'} ({(primaryCoin.symbol || 'N/A').toUpperCase()})
               </CardTitle>
               <div className="text-right">
-                 <p className="text-sm font-bold text-blue-700">${btc.current_price.toLocaleString()}</p>
-                 <Badge variant={btc.price_change_percentage_24h >= 0 ? "default" : "destructive"} className={`text-[10px] px-1.5 py-0.5 ${btc.price_change_percentage_24h >= 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{btc.price_change_percentage_24h >= 0 ? '+' : ''}{btc.price_change_percentage_24h.toFixed(2)}%</Badge>
+                <p className="text-sm font-bold text-blue-700">
+                  ${primaryCoin.current_price < 1 
+                    ? (primaryCoin.current_price || 0).toFixed(4)
+                    : (primaryCoin.current_price || 0).toLocaleString()}
+                </p>
+                <Badge 
+                  variant={(primaryCoin.price_change_percentage_24h || 0) >= 0 ? "default" : "destructive"} 
+                  className={`text-[10px] px-1.5 py-0.5 ${
+                    (primaryCoin.price_change_percentage_24h || 0) >= 0 
+                      ? 'bg-green-100 text-green-700 border-green-200' 
+                      : 'bg-red-100 text-red-700 border-red-200'
+                  }`}
+                >
+                  {(primaryCoin.price_change_percentage_24h || 0) >= 0 ? '+' : ''}
+                  {(primaryCoin.price_change_percentage_24h || 0).toFixed(2)}%
+                </Badge>
               </div>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="h-32 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCrypto" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} interval="preserveStartEnd" />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} domain={['dataMin - 1', 'dataMax + 1']} />
-                  <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value: any) => [`$${value.toFixed(2)}`, 'Price']} labelFormatter={(label) => `Time: ${label}`} />
-                  <Area type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={2} fill="url(#colorCrypto)" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {validData && validData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={validData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorCryptoHome" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="time" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#64748b' }} 
+                      interval="preserveStartEnd" 
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#64748b' }} 
+                      domain={['dataMin - 100', 'dataMax + 100']}
+                      tickFormatter={(value) => `$${Math.round(value)}`}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: 'white', 
+                        border: '1px solid #e2e8f0', 
+                        borderRadius: '6px', 
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' 
+                      }} 
+                      formatter={(value: any) => [
+                        `$${Number(value).toFixed((primaryCoin.current_price || 0) < 1 ? 4 : 2)}`, 
+                        'Price'
+                      ]} 
+                      labelFormatter={(label) => `Time: ${label}`} 
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="#2563eb" 
+                      strokeWidth={2} 
+                      fill="url(#colorCryptoHome)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-neutral-400 text-xs">
+                  Chart data unavailable
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
+        
+        {/* Other crypto coins grid */}
         <div className="grid grid-cols-2 gap-3">
           {crypto.slice(1, 5).map((coin, idx) => (
-            <Card key={coin.id} className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
+            <Card key={coin.id || `crypto-${idx}`} className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
               <CardContent className="p-3">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-xs text-black truncate">{coin.name} ({coin.symbol.toUpperCase()})</span>
-                  <Badge variant={coin.price_change_percentage_24h >= 0 ? "default" : "destructive"} className={`text-[9px] px-1 py-0.5 ${coin.price_change_percentage_24h >= 0 ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{coin.price_change_percentage_24h >= 0 ? '+' : ''}{coin.price_change_percentage_24h.toFixed(1)}%</Badge>
+                  <span className="font-semibold text-xs text-black truncate">
+                    {coin.name || 'Unknown'} ({(coin.symbol || 'N/A').toUpperCase()})
+                  </span>
+                  <Badge 
+                    variant={(coin.price_change_percentage_24h || 0) >= 0 ? "default" : "destructive"} 
+                    className={`text-[9px] px-1 py-0.5 ${
+                      (coin.price_change_percentage_24h || 0) >= 0 
+                        ? 'bg-green-100 text-green-700 border-green-200' 
+                        : 'bg-red-100 text-red-700 border-red-200'
+                    }`}
+                  >
+                    {(coin.price_change_percentage_24h || 0) >= 0 ? '+' : ''}
+                    {(coin.price_change_percentage_24h || 0).toFixed(1)}%
+                  </Badge>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="font-bold text-sm text-black">${coin.current_price.toFixed(2)}</span>
-                  <span className={`text-[10px] font-medium ${coin.price_change_percentage_24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>{coin.price_change_percentage_24h >= 0 ? '+' : ''}${coin.price_change_percentage_24h.toFixed(2)}</span>
+                  <span className="font-bold text-sm text-black">
+                    ${(coin.current_price || 0) < 1 
+                      ? (coin.current_price || 0).toFixed(4) 
+                      : (coin.current_price || 0).toFixed(2)}
+                  </span>
+                  <span className={`text-[10px] font-medium ${
+                    (coin.price_change_percentage_24h || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {(coin.price_change_percentage_24h || 0) >= 0 ? '+' : ''}
+                    {(coin.price_change_percentage_24h || 0).toFixed(2)}%
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -544,7 +895,7 @@ const EnhancedHomepage = ({
       <div className="max-w-3xl mx-auto px-4 pt-2 pb-2">
         {/* Lottie Animation */}
         {lottieData ? (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }} className="flex flex-col items-center mb-1">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }} className="flex flex-col items-center mb-2">
             <motion.div
               className="w-64 h-64 cursor-pointer select-none"
               onPointerDown={handleLottieClick}
@@ -554,10 +905,10 @@ const EnhancedHomepage = ({
             >
               <Lottie lottieRef={lottieRef} animationData={lottieData} loop autoplay />
             </motion.div>
-            <h1 className="mt-1 text-2xl font-light text-center">
-              <span className="font-light">Intelli</span><span className="font-extralight">Search</span>
+            <h1 className="mt-1 text-4xl font-semibold text-center lowercase font-sans" style={{ fontFamily: 'Inter, var(--font-sans), Segoe UI, Arial, sans-serif', letterSpacing: '0.01em', color: 'inherit' }}>
+              <span className="font-normal">intelli</span><span className="font-bold">search</span>
             </h1>
-            <p className="mt-1 text-base text-neutral-500">AI powered intelligent search engine</p>
+            <p className="mt-1 text-sm text-neutral-500 uppercase tracking-wide">AI POWERED INTELLIGENT SEARCH ENGINE</p>
           </motion.div>
         ) : (
           <div className="flex flex-col items-center mb-1 h-64">
@@ -581,16 +932,15 @@ const EnhancedHomepage = ({
                     handleSearchWithAgent(input.value.trim());
                     input.value = '';
                 }
-            }} className="relative flex items-center gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Ask anything..."
-                  className="flex h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                />
-              </div>
-              <Button type="submit" className="px-6">
+            }} className="relative flex items-center border border-neutral-300 rounded-lg bg-white shadow-sm focus-within:ring-1 focus-within:ring-black focus-within:border-black transition-all pr-2">
+              <Search className="w-4 h-4 text-neutral-400 ml-3 mr-2 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Ask anything..."
+                className="flex-1 bg-transparent outline-none text-sm text-black placeholder-neutral-500 py-2.5"
+                // onKeyDown removed as form submission handles Enter
+              />
+              <Button type="submit" size="sm" className="ml-2 bg-black text-white hover:bg-neutral-800 rounded-md px-3 py-1.5 h-auto text-xs">
                 Search
               </Button>
             </form>
@@ -660,7 +1010,7 @@ const EnhancedHomepage = ({
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start"
         >
           {/* News Grid (Left) */}
           <div className="space-y-4">
@@ -709,12 +1059,10 @@ const EnhancedHomepage = ({
             )) : <p className="text-xs text-neutral-400">Loading news...</p>}
           </div>
 
-          {/* Live Stock Market Grid (Right) & Crypto Market */}
+          {/* Stock Market (Right) */}
           <div className="space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold text-black mb-1">Stock Market</h2>
-              <StockChart stocks={stocks} />
-            </div>
+            <h2 className="text-sm font-semibold text-black mb-1">Stock Market</h2>
+            <StockChart stocks={stocks} />
             <div className="mt-8">
               <h2 className="text-sm font-semibold text-black mb-1">Crypto Market</h2>
               <CryptoChart crypto={crypto} />

@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, ArrowLeft, ArrowRight, Loader2, Image as ImageIcon, VideoIcon, Link as LinkIcon, ThumbsUp, MessageSquare, Clock, ExternalLink, Filter, Grid, List } from 'lucide-react';
+import { Search, ArrowLeft, ArrowRight, Loader2, Image as ImageIcon, VideoIcon, Link as LinkIcon, ThumbsUp, MessageSquare, Clock, ExternalLink, Filter, Grid, List, Sparkles, TrendingUp, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SearchResult {
@@ -86,8 +88,7 @@ const EnhancedSearchResults: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(pageParam);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [filterType, setFilterType] = useState<'all' | 'webpage' | 'image' | 'video' | 'discussion'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'webpage' | 'image' | 'video' | 'discussion'>('all');
 
   useEffect(() => {
     setCurrentQuery(queryParam);
@@ -126,7 +127,7 @@ const EnhancedSearchResults: React.FC = () => {
   };
 
   const filteredResults = results.filter(result => 
-    filterType === 'all' || result.type === filterType
+    activeTab === 'all' || result.type === activeTab
   );
 
   const formatTimeAgo = (dateString: string) => {
@@ -142,28 +143,35 @@ const EnhancedSearchResults: React.FC = () => {
   };
 
   const renderSkeleton = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
-    >
+    <div className="space-y-6">
       {Array.from({ length: 3 }).map((_, i) => (
-        <Card key={i} className="border-neutral-200/60 bg-white shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2 mb-2">
+        <Card key={i} className="border-0 shadow-none bg-transparent">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
               <Skeleton className="h-4 w-4 rounded-full" />
-              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-3 w-32" />
             </div>
-            <Skeleton className="h-5 w-3/4" />
-          </CardHeader>
-          <CardContent className="pt-0">
-            <Skeleton className="h-4 w-full mb-2" />
+            <Skeleton className="h-6 w-3/4" />
+            <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-5/6" />
-          </CardContent>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          </div>
         </Card>
       ))}
-    </motion.div>
+    </div>
   );
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'image': return <ImageIcon className="w-4 h-4" />;
+      case 'video': return <VideoIcon className="w-4 h-4" />;
+      case 'discussion': return <MessageSquare className="w-4 h-4" />;
+      default: return <LinkIcon className="w-4 h-4" />;
+    }
+  };
 
   const renderResultCard = (result: SearchResult, index: number) => (
     <motion.div
@@ -171,90 +179,83 @@ const EnhancedSearchResults: React.FC = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
+      className="group py-6 border-b border-gray-100 last:border-b-0"
     >
-      <Card className="group overflow-hidden border-neutral-200/60 bg-white shadow-sm hover:shadow-lg hover:border-neutral-300/80 transition-all duration-300">
-        {(result.type === 'image' && result.imageUrl) && (
-          <div className="relative w-full h-48 bg-neutral-100 overflow-hidden">
+      <div className="space-y-3">
+        {/* Source and metadata */}
+        <div className="flex items-center gap-2 text-sm">
+          {result.sourceIcon && (
+            <Avatar className="h-4 w-4">
+              <AvatarImage src={result.sourceIcon} alt={result.source}/>
+              <AvatarFallback className="text-[8px] bg-gray-100">
+                {result.source?.charAt(0)}
+              </AvatarFallback>
+            </Avatar>
+          )}
+          <span className="text-gray-600">{result.source}</span>
+          <span className="text-gray-300">•</span>
+          <div className="flex items-center gap-1 text-gray-500">
+            <Clock className="w-3 h-3" />
+            <span className="text-xs">{formatTimeAgo(result.publishedAt || new Date().toISOString())}</span>
+          </div>
+          <Badge variant="secondary" className="text-xs h-5">
+            {getTypeIcon(result.type)}
+            <span className="ml-1">{result.type.charAt(0).toUpperCase() + result.type.slice(1)}</span>
+          </Badge>
+        </div>
+
+        {/* Title */}
+        <div className="space-y-1">
+          <a 
+            href={result.url} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="group-hover:underline"
+          >
+            <h3 className="text-xl font-medium text-blue-600 hover:text-blue-800 transition-colors line-clamp-2 leading-tight">
+              {result.title}
+            </h3>
+          </a>
+          <div className="text-sm text-gray-600">
+            {result.url}
+          </div>
+        </div>
+
+        {/* Image preview for image/video results */}
+        {(result.type === 'image' || result.type === 'video') && result.imageUrl && (
+          <div className="relative w-full max-w-xs">
             <img 
               src={result.imageUrl} 
               alt={result.title} 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+              className="w-full h-32 object-cover rounded-lg border" 
             />
-            <Badge className="absolute top-2 right-2 bg-black/80 text-white text-xs">
-              <ImageIcon className="w-3 h-3 mr-1" />
-              Image
-            </Badge>
-          </div>
-        )}
-        
-        {(result.type === 'video' && result.videoUrl) && (
-          <div className="relative w-full aspect-video bg-black">
-            <iframe 
-              src={result.videoUrl}
-              title={result.title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
-            />
-            <Badge className="absolute top-2 right-2 bg-red-600 text-white text-xs">
-              <VideoIcon className="w-3 h-3 mr-1" />
-              Video
-            </Badge>
-          </div>
-        )}
-
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2 mb-2">
-            {result.sourceIcon && (
-              <Avatar className="h-4 w-4">
-                <AvatarImage src={result.sourceIcon} alt={result.source}/>
-                <AvatarFallback className="text-[8px] bg-neutral-100">
-                  {result.source?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+            {result.type === 'video' && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg">
+                <VideoIcon className="w-8 h-8 text-white" />
+              </div>
             )}
-            <span className="text-xs text-neutral-500 font-medium">
-              {result.source}
-            </span>
-            <span className="text-neutral-300">•</span>
-            <span className="text-xs text-neutral-400 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {formatTimeAgo(result.publishedAt || new Date().toISOString())}
-            </span>
-            <Badge variant="outline" className="ml-auto text-xs">
-              {result.type === 'webpage' && <LinkIcon className="w-3 h-3 mr-1" />}
-              {result.type === 'discussion' && <MessageSquare className="w-3 h-3 mr-1" />}
-              {result.type === 'image' && <ImageIcon className="w-3 h-3 mr-1" />}
-              {result.type === 'video' && <VideoIcon className="w-3 h-3 mr-1" />}
-              {result.type.charAt(0).toUpperCase() + result.type.slice(1)}
-            </Badge>
           </div>
-          
-          <a href={result.url} target="_blank" rel="noopener noreferrer" className="group">
-            <CardTitle className="text-lg font-semibold text-neutral-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
-              {result.title}
-            </CardTitle>
-          </a>
-        </CardHeader>
+        )}
 
-        <CardContent className="pt-0 pb-4">
-          <p className="text-sm text-neutral-600 line-clamp-3 leading-relaxed mb-3">
-            {result.snippet}
-          </p>
-          
-          <div className="flex items-center justify-between">
+        {/* Snippet */}
+        <p className="text-gray-700 leading-relaxed line-clamp-3">
+          {result.snippet}
+        </p>
+
+        {/* Actions and engagement */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <a 
               href={result.url} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"
             >
-              Visit site <ExternalLink className="w-3 h-3" />
+              Visit <ExternalLink className="w-3 h-3" />
             </a>
             
             {result.type === 'discussion' && (result.likes !== undefined || result.comments !== undefined) && (
-              <div className="flex items-center gap-3 text-xs text-neutral-500">
+              <div className="flex items-center gap-3 text-sm text-gray-500">
                 {result.likes !== undefined && (
                   <span className="flex items-center gap-1">
                     <ThumbsUp className="w-3 h-3" /> 
@@ -270,94 +271,100 @@ const EnhancedSearchResults: React.FC = () => {
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </motion.div>
   );
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 text-black">
-      {/* Enhanced Search Header */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-neutral-200/70 shadow-sm">
-        <div className="container mx-auto max-w-4xl px-4 py-4">
-          <form onSubmit={handleSearchSubmit} className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-neutral-400" />
-              <Input
-                type="text"
-                value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
-                placeholder="Search anything..."
-                className="pl-10 pr-4 py-2.5 border-neutral-300 focus:border-black focus:ring-1 focus:ring-black rounded-lg text-sm"
-              />
-            </div>
-            <Button type="submit" className="bg-black text-white hover:bg-neutral-800 px-6 py-2.5 rounded-lg">
-              Search
+    <div className="min-h-screen bg-white">
+      {/* Clean Header with Search */}
+      <div className="border-b bg-white/95 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.back()}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back
             </Button>
-          </form>
+            
+            <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  type="text"
+                  value={inputQuery}
+                  onChange={(e) => setInputQuery(e.target.value)}
+                  placeholder="Search anything..."
+                  className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 bg-gray-50/50"
+                />
+              </div>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                Search
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
 
-      <div className="container mx-auto max-w-4xl px-4 py-6">
-        {/* Results Header with Filters */}
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* Results Summary */}
         {!loading && results.length > 0 && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-6"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h1 className="text-xl font-semibold text-neutral-900 mb-1">
-                  Search Results
-                </h1>
-                <p className="text-sm text-neutral-600">
-                  Found {filteredResults.length} results for "<span className="font-medium">{currentQuery}</span>" (Page {currentPage})
-                </p>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="px-3"
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="px-3"
-                >
-                  <Grid className="w-4 h-4" />
-                </Button>
-              </div>
+            <div className="text-sm text-gray-600 mb-4">
+                             About {(Math.random() * 1000000 + 100000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} results 
+               for <span className="font-medium text-gray-900">&ldquo;{currentQuery}&rdquo;</span> 
+               <span className="text-gray-400"> ({(Math.random() * 0.5 + 0.2).toFixed(2)} seconds)</span>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-2 mb-4">
-              <Filter className="w-4 h-4 text-neutral-500" />
-              <div className="flex gap-1">
-                {(['all', 'webpage', 'image', 'video', 'discussion'] as const).map((type) => (
-                  <Button
-                    key={type}
-                    variant={filterType === type ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setFilterType(type)}
-                    className="text-xs px-3 py-1.5 h-auto rounded-md"
-                  >
-                    {type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}
-                    {type !== 'all' && (
-                      <Badge variant="secondary" className="ml-1.5 text-[10px] px-1">
-                        {results.filter(r => r.type === type).length}
-                      </Badge>
-                    )}
-                  </Button>
-                ))}
-              </div>
-            </div>
+            <Tabs value={activeTab} onValueChange={(value: any) => setActiveTab(value)} className="w-full">
+              <TabsList className="h-auto p-1 bg-gray-50 rounded-lg">
+                <TabsTrigger value="all" className="data-[state=active]:bg-white text-sm">
+                  <Globe className="w-4 h-4 mr-1" />
+                  All
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {results.length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="webpage" className="data-[state=active]:bg-white text-sm">
+                  <LinkIcon className="w-4 h-4 mr-1" />
+                  Web
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {results.filter(r => r.type === 'webpage').length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="image" className="data-[state=active]:bg-white text-sm">
+                  <ImageIcon className="w-4 h-4 mr-1" />
+                  Images
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {results.filter(r => r.type === 'image').length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="video" className="data-[state=active]:bg-white text-sm">
+                  <VideoIcon className="w-4 h-4 mr-1" />
+                  Videos
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {results.filter(r => r.type === 'video').length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="discussion" className="data-[state=active]:bg-white text-sm">
+                  <MessageSquare className="w-4 h-4 mr-1" />
+                  Discussions
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {results.filter(r => r.type === 'discussion').length}
+                  </Badge>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </motion.div>
         )}
 
@@ -369,20 +376,19 @@ const EnhancedSearchResults: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12"
           >
-            <Card className="border-red-200 bg-red-50 text-red-700 p-6 text-center">
-              <CardTitle className="text-lg mb-2">Something went wrong</CardTitle>
-              <CardContent className="pt-0">
-                <p>{error}</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-3 border-red-300 text-red-700 hover:bg-red-100"
-                  onClick={() => window.location.reload()}
-                >
-                  Try Again
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+              <h3 className="text-lg font-medium text-red-900 mb-2">Something went wrong</h3>
+              <p className="text-red-700 mb-4">{error}</p>
+              <Button 
+                variant="outline" 
+                className="border-red-300 text-red-700 hover:bg-red-100"
+                onClick={() => window.location.reload()}
+              >
+                Try Again
+              </Button>
+            </div>
           </motion.div>
         )}
 
@@ -391,45 +397,36 @@ const EnhancedSearchResults: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12"
           >
-            <Card className="border-neutral-200 bg-white p-8 text-center">
-              <CardTitle className="text-xl mb-3">No results found</CardTitle>
-              <CardContent className="pt-0">
-                <p className="text-neutral-600 mb-4">
-                  We couldn't find anything for "<span className="font-medium">{currentQuery}</span>".
-                </p>
-                <p className="text-neutral-500 text-sm mb-4">
-                  Try adjusting your search terms or browse our suggestions below.
-                </p>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setFilterType('all')}
-                  className="border-neutral-300"
-                >
-                  Clear Filters
-                </Button>
-              </CardContent>
-            </Card>
+            <div className="max-w-md mx-auto">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">No results found</h3>
+                             <p className="text-gray-600 mb-4">
+                 We couldn&apos;t find anything for &ldquo;{currentQuery}&rdquo;. Try different keywords or check your spelling.
+               </p>
+              <Button 
+                variant="outline" 
+                onClick={() => setActiveTab('all')}
+                className="border-gray-300"
+              >
+                View All Results
+              </Button>
+            </div>
           </motion.div>
         )}
 
-        {/* Results Grid/List */}
+        {/* Results */}
         {!loading && !error && filteredResults.length > 0 && (
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={`${viewMode}-${filterType}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className={viewMode === 'grid' 
-                ? "grid grid-cols-1 md:grid-cols-2 gap-6" 
-                : "space-y-6"
-              }
-            >
-              {filteredResults.map((result, index) => renderResultCard(result, index))}
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            {filteredResults.map((result, index) => renderResultCard(result, index))}
+          </motion.div>
         )}
 
         {/* Pagination */}
@@ -444,13 +441,13 @@ const EnhancedSearchResults: React.FC = () => {
               variant="outline"
               onClick={() => handlePagination(currentPage - 1)}
               disabled={currentPage <= 1}
-              className="border-neutral-300 text-neutral-700 hover:bg-neutral-100"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               <ArrowLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             
             <div className="flex items-center gap-2">
-              <span className="text-sm text-neutral-600">
+              <span className="text-sm text-gray-600">
                 Page <span className="font-medium">{currentPage}</span>
               </span>
             </div>
@@ -459,7 +456,7 @@ const EnhancedSearchResults: React.FC = () => {
               variant="outline"
               onClick={() => handlePagination(currentPage + 1)}
               disabled={filteredResults.length < MOCK_RESULTS_PER_PAGE}
-              className="border-neutral-300 text-neutral-700 hover:bg-neutral-100"
+              className="border-gray-300 text-gray-700 hover:bg-gray-50"
             >
               Next <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -472,9 +469,12 @@ const EnhancedSearchResults: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mt-12 pt-8 border-t border-neutral-200"
+            className="mt-12 pt-8 border-t border-gray-200"
           >
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">Related Searches</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-gray-600" />
+              <h3 className="text-lg font-medium text-gray-900">Related Searches</h3>
+            </div>
             <div className="flex flex-wrap gap-2">
               {relatedSearches.map((relatedQuery) => (
                 <Button
@@ -482,7 +482,7 @@ const EnhancedSearchResults: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => handleSearchSubmit(undefined, relatedQuery)}
-                  className="text-neutral-700 bg-neutral-50 hover:bg-neutral-100 border-neutral-200 rounded-lg text-sm font-normal px-4 py-2"
+                  className="text-gray-700 bg-gray-50 hover:bg-gray-100 border-gray-200 rounded-full text-sm font-normal"
                 >
                   {relatedQuery}
                 </Button>
@@ -490,6 +490,31 @@ const EnhancedSearchResults: React.FC = () => {
             </div>
           </motion.div>
         )}
+      </div>
+
+      {/* Floating Search Bar at Bottom */}
+      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border border-gray-200 rounded-full shadow-lg backdrop-blur-md"
+        >
+          <form onSubmit={handleSearchSubmit} className="flex items-center p-2">
+            <div className="relative flex-1 min-w-[300px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                type="text"
+                value={inputQuery}
+                onChange={(e) => setInputQuery(e.target.value)}
+                placeholder="Search again..."
+                className="pl-10 pr-4 py-2 border-0 bg-transparent focus:ring-0 focus:border-0 rounded-full"
+              />
+            </div>
+            <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700 rounded-full px-4">
+              <Search className="w-4 h-4" />
+            </Button>
+          </form>
+        </motion.div>
       </div>
     </div>
   );

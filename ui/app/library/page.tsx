@@ -32,6 +32,24 @@ const LibraryPage = () => {
   const sendMessage = (message: string) => {
     console.log('Library search (global):', message);
     addRecentSearch(message);
+    
+    // Add to chat history (simulate AI response for demo)
+    const mockAIResponse = `This is a simulated AI response for your query: "${message}". In a real implementation, this would be the actual AI response from your chat system.`;
+    
+    // Store chat history in localStorage for the library
+    const existingHistory = localStorage.getItem('futuresearch_chat_history');
+    const chatHistory = existingHistory ? JSON.parse(existingHistory) : [];
+    
+    const newChatItem = {
+      id: Date.now().toString(),
+      query: message,
+      response: mockAIResponse,
+      timestamp: new Date().toISOString()
+    };
+    
+    const updatedHistory = [newChatItem, ...chatHistory].slice(0, 50); // Keep only last 50
+    localStorage.setItem('futuresearch_chat_history', JSON.stringify(updatedHistory));
+    
     router.push(`/?q=${encodeURIComponent(message)}`); // Navigate to home page with search query
   };
 

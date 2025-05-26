@@ -114,6 +114,25 @@ const ChatWindow = () => {
     }
   };
 
+  const saveToLibraryChatHistory = (query: string, response: string) => {
+    try {
+      const existingHistory = localStorage.getItem('futuresearch_chat_history');
+      const chatHistory = existingHistory ? JSON.parse(existingHistory) : [];
+      
+      const newChatItem = {
+        id: Date.now().toString(),
+        query: query,
+        response: response,
+        timestamp: new Date().toISOString()
+      };
+      
+      const updatedHistory = [newChatItem, ...chatHistory].slice(0, 50); // Keep only last 50
+      localStorage.setItem('futuresearch_chat_history', JSON.stringify(updatedHistory));
+    } catch (error) {
+      console.error("Failed to save to library chat history:", error);
+    }
+  };
+
   const sendMessage = async (message: string) => {
     if (loading) return;
 
@@ -205,6 +224,9 @@ const ChatWindow = () => {
         }
         saveChatToHistory(updatedMessages);
 
+        // Also save to library chat history format
+        saveToLibraryChatHistory(message, receivedMessage);
+
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
 
         if (
@@ -263,8 +285,6 @@ const ChatWindow = () => {
       ) : (
         <EnhancedHomepage
           sendMessage={sendMessage}
-          focusMode={focusMode}
-          setFocusMode={setFocusMode}
         />
       )}
     </div>

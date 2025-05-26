@@ -28,9 +28,12 @@ export function FloatingNavbar({ className }: { className?: string }) {
 					{/* Left: Brand Logo */}					<Link
 						href="/"
 						className="flex items-center space-x-2 select-none flex-shrink-0"
-					>
-						<span className="font-medium text-sm select-none text-foreground">
-							IntelliSearch
+					>						<span
+							className="font-semibold text-xl select-none lowercase font-sans"
+							style={{ fontFamily: 'Inter, var(--font-sans), Segoe UI, Arial, sans-serif', letterSpacing: '0.01em', color: 'inherit' }}
+						>
+							<span className="font-normal">intelli</span>
+							<span className="font-bold">search</span>
 						</span>
 					</Link>{/* Center: Navigation - Flex grow to take remaining space */}
 					<nav className="hidden md:flex items-center justify-center flex-1 mx-8">
@@ -83,13 +86,15 @@ export function FloatingNavbar({ className }: { className?: string }) {
 							<SheetContent
 								side="left"
 								className="w-full max-w-xs bg-white p-6"
-							>								<div className="mb-4 flex items-center justify-between">									<Link
+							>
+								<div className="mb-4 flex items-center justify-between">									<Link
 										href="/"
 										className="flex items-center space-x-2"
 										onClick={() => setIsMobileMenuOpen(false)}
 									>
-										<span className="font-medium text-sm select-none text-foreground">
-											IntelliSearch
+										<span className="font-bold text-lg select-none">
+											<span className="font-normal">intelli</span>
+											<span className="font-bold">search</span>
 										</span>
 									</Link>
 								</div>
@@ -127,7 +132,7 @@ export function FloatingNavbar({ className }: { className?: string }) {
 					</div>
 				</div>
 			</header>
-			<div className="h-20" />
+			<div className="h-12" />
 		</>
 	);
 }

@@ -18,7 +18,8 @@ import {
   Sparkles,
   ChevronRight,
   Play,
-  Pause
+  Pause,
+  Bitcoin
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,6 +38,20 @@ interface SportsScore {
   time: string;
   league: string;
   quarter?: string;
+  lastUpdate: Date;
+}
+
+interface CryptoData {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+  marketCap: string;
+  rank: number;
+  aiInsight?: string;
   lastUpdate: Date;
 }
 
@@ -68,6 +83,7 @@ const sportConfig = {
 const LiveFeeds: React.FC<LiveFeedsProps> = ({ className }) => {
   const [sportsData, setSportsData] = useState<SportsScore[]>([]);
   const [stocksData, setStocksData] = useState<StockData[]>([]);
+  const [cryptoData, setCryptoData] = useState<CryptoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("sports");
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -128,9 +144,7 @@ const LiveFeeds: React.FC<LiveFeedsProps> = ({ className }) => {
           league: "Premier League",
           lastUpdate: new Date()
         }
-      ];
-
-      // Mock Stock Data with AI insights
+      ];      // Mock Stock Data with AI insights
       const mockStocks: StockData[] = [
         {
           id: "1",
@@ -182,8 +196,65 @@ const LiveFeeds: React.FC<LiveFeedsProps> = ({ className }) => {
         }
       ];
 
+      // Mock Crypto Data with AI insights
+      const mockCrypto: CryptoData[] = [
+        {
+          id: "1",
+          symbol: "BTC",
+          name: "Bitcoin",
+          price: 43250.82,
+          change: 1875.45,
+          changePercent: 4.54,
+          volume: 28450000000,
+          marketCap: "845B",
+          rank: 1,
+          aiInsight: "Breaking above $43K resistance. Institutional adoption driving demand. Watch for continuation above $44K.",
+          lastUpdate: new Date()
+        },
+        {
+          id: "2",
+          symbol: "ETH",
+          name: "Ethereum",
+          price: 2645.33,
+          change: -87.12,
+          changePercent: -3.19,
+          volume: 15230000000,
+          marketCap: "318B",
+          rank: 2,
+          aiInsight: "Consolidating after recent upgrade. DeFi activity remains strong. Support at $2600 level.",
+          lastUpdate: new Date()
+        },
+        {
+          id: "3",
+          symbol: "BNB",
+          name: "Binance Coin",
+          price: 308.45,
+          change: 12.67,
+          changePercent: 4.28,
+          volume: 892000000,
+          marketCap: "47B",
+          rank: 3,
+          aiInsight: "Benefiting from increased exchange volume. Strong correlation with overall crypto market sentiment.",
+          lastUpdate: new Date()
+        },
+        {
+          id: "4",
+          symbol: "SOL",
+          name: "Solana",
+          price: 95.78,
+          change: 3.45,
+          changePercent: 3.74,
+          volume: 2450000000,
+          marketCap: "41B",
+          rank: 4,
+          aiInsight: "Network improvements driving adoption. DeFi ecosystem expansion continues to attract developers.",
+          lastUpdate: new Date()
+        }
+      ];
+
       setSportsData(mockSports);
       setStocksData(mockStocks);
+      setCryptoData(mockCrypto);
       setLastUpdated(new Date());
     } catch (error) {
       console.error("Failed to fetch live data:", error);
@@ -236,11 +307,9 @@ const LiveFeeds: React.FC<LiveFeedsProps> = ({ className }) => {
             <span>Refresh</span>
           </Button>
         </div>
-      </div>
-
-      {/* Tabs */}
+      </div>      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 w-full">
+        <TabsList className="grid grid-cols-3 w-full">
           <TabsTrigger value="sports" className="flex items-center space-x-2">
             <Trophy className="w-4 h-4" />
             <span>Sports Scores</span>
@@ -248,6 +317,10 @@ const LiveFeeds: React.FC<LiveFeedsProps> = ({ className }) => {
           <TabsTrigger value="stocks" className="flex items-center space-x-2">
             <BarChart3 className="w-4 h-4" />
             <span>Stock Market</span>
+          </TabsTrigger>
+          <TabsTrigger value="crypto" className="flex items-center space-x-2">
+            <Bitcoin className="w-4 h-4" />
+            <span>Crypto Market</span>
           </TabsTrigger>
         </TabsList>
 
@@ -270,9 +343,7 @@ const LiveFeeds: React.FC<LiveFeedsProps> = ({ className }) => {
               </motion.div>
             )}
           </AnimatePresence>
-        </TabsContent>
-
-        {/* Stocks Tab */}
+        </TabsContent>        {/* Stocks Tab */}
         <TabsContent value="stocks" className="mt-6">
           <AnimatePresence mode="wait">
             {loading ? (
@@ -287,6 +358,27 @@ const LiveFeeds: React.FC<LiveFeedsProps> = ({ className }) => {
               >
                 {stocksData.map((stock, index) => (
                   <StockCard key={stock.id} stock={stock} index={index} />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </TabsContent>
+
+        {/* Crypto Tab */}
+        <TabsContent value="crypto" className="mt-6">
+          <AnimatePresence mode="wait">
+            {loading ? (
+              <LoadingSkeleton />
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-4"
+              >
+                {cryptoData.map((crypto, index) => (
+                  <CryptoCard key={crypto.id} crypto={crypto} index={index} />
                 ))}
               </motion.div>
             )}
@@ -439,6 +531,91 @@ const StockCard: React.FC<{ stock: StockData; index: number }> = ({ stock, index
   );
 };
 
+// Crypto Card Component
+const CryptoCard: React.FC<{ crypto: CryptoData; index: number }> = ({ crypto, index }) => {
+  const isPositive = crypto.change >= 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.1 }}
+    >
+      <Card className="p-4 hover:shadow-md transition-all duration-200">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-4">
+            <div className={cn(
+              "p-2 rounded-lg",
+              isPositive ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+            )}>
+              {isPositive ? (
+                <TrendingUp className="w-4 h-4" />
+              ) : (
+                <TrendingDown className="w-4 h-4" />
+              )}
+            </div>
+            
+            <div className="flex-1">
+              <div className="flex items-center space-x-2 mb-1">
+                <h3 className="font-semibold text-gray-900">{crypto.symbol}</h3>
+                <Badge variant="outline" className="text-xs">
+                  #{crypto.rank}
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {crypto.marketCap}
+                </Badge>
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-2">{crypto.name}</p>
+              
+              {crypto.aiInsight && (
+                <div className="bg-blue-50 rounded-lg p-3 mb-2">
+                  <div className="flex items-center space-x-1 mb-1">
+                    <Sparkles className="w-3 h-3 text-blue-600" />
+                    <span className="text-xs text-blue-600 font-medium">AI Insight</span>
+                  </div>
+                  <p className="text-xs text-blue-700">{crypto.aiInsight}</p>
+                </div>
+              )}
+              
+              <div className="flex items-center space-x-4 text-xs text-gray-500">
+                <div className="flex items-center space-x-1">
+                  <Activity className="w-3 h-3" />
+                  <span>Vol: ${formatCryptoVolume(crypto.volume)}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{crypto.lastUpdate.toLocaleTimeString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-right">
+            <div className="text-2xl font-bold text-gray-900">
+              ${crypto.price.toLocaleString()}
+            </div>
+            
+            <div className={cn(
+              "flex items-center space-x-1 text-sm font-medium",
+              isPositive ? "text-green-600" : "text-red-600"
+            )}>
+              {isPositive ? (
+                <TrendingUp className="w-3 h-3" />
+              ) : (
+                <TrendingDown className="w-3 h-3" />
+              )}
+              <span>
+                {isPositive ? "+" : ""}${crypto.change.toFixed(2)} ({isPositive ? "+" : ""}{crypto.changePercent.toFixed(2)}%)
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </motion.div>
+  );
+};
+
 // Loading Skeleton Component
 const LoadingSkeleton: React.FC = () => (
   <motion.div
@@ -465,6 +642,13 @@ const LoadingSkeleton: React.FC = () => (
 );
 
 const formatVolume = (volume: number) => {
+  if (volume >= 1000000) return `${(volume / 1000000).toFixed(1)}M`;
+  if (volume >= 1000) return `${(volume / 1000).toFixed(1)}K`;
+  return volume.toString();
+};
+
+const formatCryptoVolume = (volume: number) => {
+  if (volume >= 1000000000) return `${(volume / 1000000000).toFixed(1)}B`;
   if (volume >= 1000000) return `${(volume / 1000000).toFixed(1)}M`;
   if (volume >= 1000) return `${(volume / 1000).toFixed(1)}K`;
   return volume.toString();
