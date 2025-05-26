@@ -48,7 +48,7 @@ const fetchRelatedSearches = async (query: string, chatHistory: Message[]): Prom
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ 
-        chat_history: chat_history,
+        chat_history: chat_history, // Reverted to chat_history
       }),
     });
     
@@ -304,13 +304,6 @@ const MessageBox = ({
               {!loading && (
                 <div className="flex flex-row items-center justify-between w-full text-muted-foreground py-4 border-t border-border mt-6">
                   <div className="flex flex-row items-center space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="p-2 text-muted-foreground rounded-lg hover:bg-accent transition duration-200 hover:text-foreground"
-                    >
-                      <Share size={18} />
-                    </Button>
                     <Rewrite rewrite={rewrite} messageId={message.id} />
                   </div>
                   <div className="flex flex-row items-center space-x-1">

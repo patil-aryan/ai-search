@@ -9,7 +9,7 @@ const Rewrite = ({
 }) => {
   return (
     <button
-      className="p-2 text-white/70 rounded-xl hover:bg-[#1c1c1c] transition duration-200 hover:text-white"
+      className="p-2 text-black/70 rounded-xl hover:bg-[#1c1c1c] transition duration-200 hover:text-black"
       onClick={() => rewrite(messageId)}
     >
       <ArrowLeftRight size={18} />

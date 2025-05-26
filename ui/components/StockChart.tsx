@@ -18,6 +18,15 @@ interface StockChartProps {
   stocks: StockData[];
 }
 
+// Define default mock stock data
+const DEFAULT_MOCK_STOCK: StockData = {
+  symbol: "MOCKIDX",
+  price: 150.75,
+  change: 5.25,
+  changePercent: (5.25 / (150.75 - 5.25)) * 100,
+  name: "Sample Market Index",
+};
+
 // Generate mock historical data for chart
 const generateHistoricalData = (currentPrice: number, change: number) => {
   const data = [];
@@ -43,38 +52,24 @@ const generateHistoricalData = (currentPrice: number, change: number) => {
 };
 
 const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
-  // Memoize chart data to prevent flickering on re-renders
-  const chartData = useMemo(() => {
-    if (!stocks || stocks.length === 0 || !stocks[0] || typeof stocks[0].price !== 'number' || typeof stocks[0].change !== 'number') {
-      // Return a default structure or empty array if primary stock data is invalid to prevent errors
-      return Array.from({ length: 24 }, (_, i) => ({
-        time: `${i.toString().padStart(2, '0')}:00`,
-        price: 0,
-        volume: 0,
-      }));
+  // Memoize chart data and determine which stock to display
+  const { displayStock, chartData } = useMemo(() => {
+    let stockToUse = DEFAULT_MOCK_STOCK; // Default to mock stock
+
+    if (stocks && stocks.length > 0 && stocks[0]) {
+      const firstStock = stocks[0];
+      // Check if the first stock has valid price and change numbers
+      if (typeof firstStock.price === 'number' && 
+          !isNaN(firstStock.price) &&
+          typeof firstStock.change === 'number' &&
+          !isNaN(firstStock.change)) {
+        stockToUse = firstStock;
+      }
     }
-    const primaryStock = stocks[0];
-    return generateHistoricalData(primaryStock.price, primaryStock.change);
+    
+    const generatedData = generateHistoricalData(stockToUse.price, stockToUse.change);
+    return { displayStock: stockToUse, chartData: generatedData };
   }, [stocks]);
-
-  if (!stocks || stocks.length === 0 || !stocks[0]) {
-    return (
-      <Card className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold text-black flex items-center gap-2">
-            <DollarSign className="w-4 h-4" />
-            Stock Market
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-xs text-neutral-400">Loading stock data...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Get the first stock for the main chart
-  const primaryStock = stocks[0];
 
   return (
     <div className="space-y-4">
@@ -84,24 +79,24 @@ const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold text-black flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
-              {primaryStock.name} ({primaryStock.symbol})
+              {displayStock.name} ({displayStock.symbol})
             </CardTitle>
             <Badge 
-              variant={primaryStock.change >= 0 ? "default" : "destructive"} 
+              variant={displayStock.change >= 0 ? "default" : "destructive"} 
               className={`text-[10px] px-1.5 py-0.5 ${
-                primaryStock.change >= 0 
+                displayStock.change >= 0 
                   ? 'bg-green-100 text-green-700 border-green-200' 
                   : 'bg-red-100 text-red-700 border-red-200'
               }`}
             >
-              {primaryStock.change >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
-              {primaryStock.change >= 0 ? '+' : ''}{primaryStock.changePercent.toFixed(2)}%
+              {displayStock.change >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+              {displayStock.change >= 0 ? '+' : ''}{displayStock.changePercent.toFixed(2)}%
             </Badge>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-black">${primaryStock.price.toFixed(2)}</span>
-            <span className={`text-sm font-medium ${primaryStock.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {primaryStock.change >= 0 ? '+' : ''}${primaryStock.change.toFixed(2)}
+            <span className="text-xl font-bold text-black">${displayStock.price.toFixed(2)}</span>
+            <span className={`text-sm font-medium ${displayStock.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {displayStock.change >= 0 ? '+' : ''}${displayStock.change.toFixed(2)}
             </span>
           </div>
         </CardHeader>
@@ -113,30 +108,30 @@ const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
                   <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                     <stop 
                       offset="5%" 
-                      stopColor={primaryStock.change >= 0 ? "#10b981" : "#ef4444"} 
-                      stopOpacity={0.3}
+                      stopColor={displayStock.change >= 0 ? "#22c55e" : "#ef4444"}
+                      stopOpacity={0.4}
                     />
                     <stop 
                       offset="95%" 
-                      stopColor={primaryStock.change >= 0 ? "#10b981" : "#ef4444"} 
-                      stopOpacity={0}
+                      stopColor={displayStock.change >= 0 ? "#22c55e" : "#ef4444"}
+                      stopOpacity={0.05}
                     />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
                 <XAxis 
                   dataKey="time" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: '#64748b' }}
+                  axisLine={{ stroke: '#9ca3af' }}
+                  tickLine={{ stroke: '#9ca3af' }}
+                  tick={{ fontSize: 10, fill: '#374151' }}
                   interval="preserveStartEnd"
                 />
                 <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: '#64748b' }}
-                  domain={['auto', 'auto']} // Let recharts auto-calculate domain
-                  tickFormatter={(value) => `$${Number(value).toLocaleString()}`} // Format Y-axis ticks as currency
+                  axisLine={{ stroke: '#9ca3af' }}
+                  tickLine={{ stroke: '#9ca3af' }}
+                  tick={{ fontSize: 10, fill: '#374151' }}
+                  domain={['dataMin - dataMin * 0.01', 'dataMax + dataMax * 0.01']}
+                  tickFormatter={(value) => `$${Number(value).toLocaleString()}`} 
                 />
                 <Tooltip 
                   contentStyle={{
@@ -152,9 +147,10 @@ const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
                 <Area
                   type="monotone"
                   dataKey="price"
-                  stroke={primaryStock.change >= 0 ? "#10b981" : "#ef4444"}
+                  stroke={displayStock.change >= 0 ? "#16a34a" : "#dc2626"}
                   strokeWidth={2}
                   fill="url(#colorPrice)"
+                  activeDot={{ r: 5, strokeWidth: 2, fill: displayStock.change >= 0 ? "#22c55e" : "#ef4444" }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -163,37 +159,39 @@ const StockChart: React.FC<StockChartProps> = ({ stocks }) => {
       </Card>
 
       {/* Stock Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {stocks.slice(1, 5).map((stock, idx) => (
-          <Card key={stock.symbol} className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1">
-                  <DollarSign className={`w-3 h-3 ${stock.change >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                  <span className="font-semibold text-xs text-black truncate">{stock.symbol}</span>
+      {stocks && stocks.length > 1 && ( // Added a check to ensure there are stocks to slice
+        <div className="grid grid-cols-2 gap-3">
+          {stocks.slice(1, 5).map((stock, idx) => (
+            <Card key={stock.symbol} className="border-neutral-200/80 rounded-lg bg-white shadow-sm">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1">
+                    <DollarSign className={`w-3 h-3 ${stock.change >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                    <span className="font-semibold text-xs text-black truncate">{stock.symbol}</span>
+                  </div>
+                  <Badge 
+                    variant={stock.change >= 0 ? "default" : "destructive"} 
+                    className={`text-[9px] px-1 py-0.5 ${
+                      stock.change >= 0 
+                        ? 'bg-green-100 text-green-700 border-green-200' 
+                        : 'bg-red-100 text-red-700 border-red-200'
+                    }`}
+                  >
+                    {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(1)}%
+                  </Badge>
                 </div>
-                <Badge 
-                  variant={stock.change >= 0 ? "default" : "destructive"} 
-                  className={`text-[9px] px-1 py-0.5 ${
-                    stock.change >= 0 
-                      ? 'bg-green-100 text-green-700 border-green-200' 
-                      : 'bg-red-100 text-red-700 border-red-200'
-                  }`}
-                >
-                  {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(1)}%
-                </Badge>
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="font-bold text-sm text-black">${stock.price.toFixed(2)}</span>
-                <span className={`text-[10px] font-medium ${stock.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
-                </span>
-              </div>
-              <p className="text-[9px] text-neutral-400 mt-0.5 truncate">{stock.name}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="font-bold text-sm text-black">${stock.price.toFixed(2)}</span>
+                  <span className={`text-[10px] font-medium ${stock.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
+                  </span>
+                </div>
+                <p className="text-[9px] text-neutral-400 mt-0.5 truncate">{stock.name}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

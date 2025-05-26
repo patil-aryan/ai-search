@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
+import { getSuggestions } from '@/lib/actions';
+import { Message } from "@/components/ChatWindow";
 
 interface SearchResult {
   id: string;
@@ -63,52 +65,6 @@ const generateMockResults = (query: string, page: number): SearchResult[] => {
   });
 };
 
-const MOCK_RELATED_SEARCHES = (query: string): string[] => {
-  if (!query) return [];
-  
-  // Generate more contextual and intelligent related searches
-  const queryLower = query.toLowerCase();
-  const relatedSearches: string[] = [];
-  
-  // Add "how to" variations
-  relatedSearches.push(`how to ${query}`);
-  relatedSearches.push(`${query} tutorial`);
-  relatedSearches.push(`${query} guide`);
-  
-  // Add comparison searches
-  if (!queryLower.includes('vs') && !queryLower.includes('versus')) {
-    relatedSearches.push(`${query} vs alternatives`);
-    relatedSearches.push(`best ${query} options`);
-  }
-  
-  // Add specific contextual searches based on query content
-  if (queryLower.includes('programming') || queryLower.includes('code') || queryLower.includes('development') || queryLower.includes('javascript') || queryLower.includes('python') || queryLower.includes('react')) {
-    relatedSearches.push(`${query} examples`);
-    relatedSearches.push(`${query} best practices`);
-    relatedSearches.push(`${query} documentation`);
-  } else if (queryLower.includes('recipe') || queryLower.includes('cooking') || queryLower.includes('food')) {
-    relatedSearches.push(`${query} ingredients`);
-    relatedSearches.push(`${query} cooking time`);
-    relatedSearches.push(`healthy ${query}`);
-  } else if (queryLower.includes('travel') || queryLower.includes('vacation') || queryLower.includes('trip')) {
-    relatedSearches.push(`${query} cost`);
-    relatedSearches.push(`${query} itinerary`);
-    relatedSearches.push(`${query} reviews`);
-  } else if (queryLower.includes('health') || queryLower.includes('fitness') || queryLower.includes('medical')) {
-    relatedSearches.push(`${query} symptoms`);
-    relatedSearches.push(`${query} treatment`);
-    relatedSearches.push(`${query} prevention`);
-  } else {
-    // Generic fallbacks
-    relatedSearches.push(`${query} tips`);
-    relatedSearches.push(`${query} benefits`);
-    relatedSearches.push(`what is ${query}`);
-  }
-  
-  // Remove duplicates and return first 6
-  return Array.from(new Set(relatedSearches)).slice(0, 6);
-};
-
 const EnhancedSearchResults: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -131,13 +87,22 @@ const EnhancedSearchResults: React.FC = () => {
     if (queryParam) {
       setLoading(true);
       setError(null);
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
           const fetchedResults = generateMockResults(queryParam, pageParam);
           setResults(fetchedResults);
-          setRelatedSearches(MOCK_RELATED_SEARCHES(queryParam));
+          // Fetch real suggestions
+          if (queryParam) {
+            // Ensure Message type is compatible with getSuggestions
+            const messages: Message[] = [{ role: 'user', content: queryParam, id: '1' }];
+            const suggestions = await getSuggestions(messages);
+            setRelatedSearches(suggestions.slice(0, 6)); // Take top 6
+          } else {
+            setRelatedSearches([]);
+          }
         } catch (e) {
-          setError("Failed to fetch search results.");
+          setError("Failed to fetch search results or suggestions.");
+          console.error(e);
         }
         setLoading(false);
       }, 800); 
@@ -554,4 +519,4 @@ const EnhancedSearchResults: React.FC = () => {
   );
 };
 
-export default EnhancedSearchResults; 
+export default EnhancedSearchResults;

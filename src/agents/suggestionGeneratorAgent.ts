@@ -6,14 +6,15 @@ import { BaseMessage } from "@langchain/core/messages";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ChatOpenAI } from "@langchain/openai";
 const suggestionGeneratorPrompt = `
-You are an AI suggestion generator for an AI powered search engine. You will be given a conversation below. You need to generate 4-5 suggestions based on the conversation. The suggestion should be relevant to the conversation that can be used by the user to ask the chat model for more information.
-You need to make sure the suggestions are relevant to the conversation and are helpful to the user. Keep a note that the user might use these suggestions to ask a chat model for more information. 
-Make sure the suggestions are medium in length and are informative and relevant to the conversation.
+
+You are an AI suggestion generator for an AI powered search engine. You will be given a conversation below. You need to generate 4-5 detailed and informative suggestions based on the conversation. The suggestions should be phrased as questions or prompts that a user might ask to get more in-depth information or explore related topics. 
+Ensure the suggestions are significantly longer and more comprehensive than simple keywords. They should guide the user towards a deeper exploration of the subject matter.
+Make sure the suggestions are medium to long in length, are highly relevant to the conversation, and are helpful to the user for further inquiry.
 Provide these suggestions separated by newlines between the XML tags <suggestions> and </suggestions>. For example:
 <suggestions>
-Tell me more about SpaceX and their recent projects
-What is the latest news on SpaceX?
-Who is the CEO of SpaceX?
+Can you elaborate on the specific technological advancements SpaceX has made in rocket reusability and how they compare to other space agencies?
+What are the primary objectives and timelines for SpaceX's upcoming Starship missions, and what potential impact could they have on interplanetary travel?
+Could you provide a detailed overview of Elon Musk's leadership style at SpaceX and how it has influenced the company's culture and innovation?
 </suggestions>
 Conversation:
 {chat_history}
