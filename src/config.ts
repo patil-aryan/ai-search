@@ -4,6 +4,9 @@ import path from "path";
 
 const configFileName = "config.toml";
 
+// Always resolve config.toml from process.cwd(), not relative to __dirname
+const configPath = path.resolve(process.cwd(), configFileName);
+
 interface Config {
   GENERAL: {
     PORT: number;
@@ -27,7 +30,7 @@ let currentKeyIndex = 0;
 
 const loadConfig = () =>
   toml.parse(
-    fs.readFileSync(path.join(__dirname, `../${configFileName}`), "utf-8")
+    fs.readFileSync(configPath, "utf-8")
   ) as any as Config;
 
 export const getPort = () => loadConfig().GENERAL.PORT;
