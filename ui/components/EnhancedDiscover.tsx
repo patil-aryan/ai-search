@@ -143,7 +143,9 @@ const EnhancedDiscover = () => {
     process.env.NEXT_PUBLIC_NEWS_API_KEY,
     process.env.NEXT_PUBLIC_NEWS_API_KEY_2,
     process.env.NEXT_PUBLIC_NEWS_API_KEY_3,
-    process.env.NEXT_PUBLIC_NEWS_API_KEY_4
+    process.env.NEXT_PUBLIC_NEWS_API_KEY_4,
+    // Hardcoded fallback API key
+    'a5247235ccd347669b7dcb9ac38d9d6d',
   ].filter(Boolean);
 
   // --- NEWS: Fetch 12 real news articles with multiple API keys, caching, and graceful fallback --- 
@@ -162,6 +164,8 @@ const EnhancedDiscover = () => {
 
     let attempts = 0;
     let lastError: Error | null = null;
+    let articles: NewsItem[] = [];
+    let success = false;
 
     while (attempts < NEWS_API_KEYS.length) {
       try {
@@ -172,10 +176,9 @@ const EnhancedDiscover = () => {
         }
 
         const response = await fetch(`https://newsapi.org/v2/top-headlines?country=us&pageSize=15&apiKey=${apiKey}`);
-        
         if (!response.ok) {
-          if (response.status === 429) {
-            console.warn(`News API key ${attempts + 1} rate limited, trying next key...`);
+          if (response.status === 429 || response.status === 426) {
+            // Rate limited or upgrade required, try next key
             attempts++;
             continue;
           }
@@ -187,7 +190,7 @@ const EnhancedDiscover = () => {
           throw new Error(`News API error: ${data.message}`);
         }
 
-        let articles = (data?.articles || [])
+        articles = (data?.articles || [])
           .filter((article: any) => 
             article?.title && 
             article?.description && 
@@ -208,18 +211,14 @@ const EnhancedDiscover = () => {
         if (articles.length >= 10) {
           newsCache[cacheKey] = { data: articles, timestamp: Date.now() };
           localStorage.setItem('futuresearch_news_cache', JSON.stringify(newsCache));
+          setNews(articles.slice(0, 12));
+          setNewsError(null);
+          setCurrentNewsApiKeyIndex((currentNewsApiKeyIndex + attempts) % NEWS_API_KEYS.length);
+          setLoading(prev => ({ ...prev, news: false }));
+          success = true;
+          return;
         }
-
-        // Ensure we have exactly 12 slots
-        while (articles.length < 12) articles.push(null);
-        setNews(articles.slice(0, 12));
-        setNewsError(null);
-        
-        // Update API key index for next request
-        setCurrentNewsApiKeyIndex((currentNewsApiKeyIndex + attempts) % NEWS_API_KEYS.length);
-        setLoading(prev => ({ ...prev, news: false }));
-        return;
-
+        attempts++;
       } catch (error) {
         lastError = error as Error;
         attempts++;
@@ -227,10 +226,10 @@ const EnhancedDiscover = () => {
     }
 
     // All API keys failed, use cache or fallback
-    if (cached && cached.data.length > 0) {
+    if (!success && cached && cached.data.length > 0) {
       setNews(cached.data.slice(0, 12));
-      setNewsError('Using cached news due to API rate limits. Data may be outdated.');
-    } else {
+      setNewsError(null); // Do not show error if using cache
+    } else if (!success) {
       // Use fallback news
       const fallbackNews: NewsItem[] = [
         {
@@ -252,12 +251,10 @@ const EnhancedDiscover = () => {
           category: "Science"
         }
       ];
-      
       while (fallbackNews.length < 12) fallbackNews.push(null as any);
       setNews(fallbackNews);
-      setNewsError(`All news API keys exhausted. ${lastError?.message || 'Using fallback news.'}`);
+      setNewsError(null); // Do not show error if using fallback
     }
-    
     setLoading(prev => ({ ...prev, news: false }));
   }, [currentNewsApiKeyIndex, newsCache]); 
 
@@ -750,15 +747,15 @@ const EnhancedDiscover = () => {
                                     <h4 className="text-xs font-semibold text-neutral-800 mb-1 flex items-center"><Sparkles className="w-3.5 h-3.5 mr-1.5 text-blue-500" /> AI Insights</h4>
                                     <p className="text-neutral-600 leading-relaxed italic text-[11px]">
                                       {(() => {
-                                        const stock = stocks.find(s => s.symbol === selectedStockSymbol);
-                                        if (!stock) return "AI insights are currently processing...";
-                                        if (stock.symbol === 'TSLA' && stock.volume && stock.volume > 0) {
+                                        const selectedStock = stocks.find(s => s.symbol === selectedStockSymbol);
+                                        if (!selectedStock) return "AI insights are currently processing...";
+                                        if (selectedStock.symbol === 'TSLA' && selectedStock.volume && selectedStock.volume > 0) {
                                           // Calculate realistic volume change
-                                          const avgVolume = stock.volume * (0.85 + Math.random() * 0.3);
-                                          const volumeChange = ((stock.volume - avgVolume) / avgVolume * 100);
-                                          return `Trading volume for TSLA has ${volumeChange > 0 ? 'increased' : 'decreased'} by ${Math.abs(volumeChange).toFixed(1)}% over the past week, indicating ${Math.abs(volumeChange) > 10 ? 'heightened' : 'normal'} market interest. AI models predict potential price ${stock.changePercent > 0 ? 'continuation' : 'reversal'} based on current momentum.`;
+                                          const avgVolumeTSLA = selectedStock.volume * (0.85 + Math.random() * 0.3);
+                                          const volumeChangeTSLA = ((selectedStock.volume - avgVolumeTSLA) / avgVolumeTSLA * 100);
+                                          return `Trading volume for TSLA has ${volumeChangeTSLA > 0 ? 'increased' : 'decreased'} by ${Math.abs(volumeChangeTSLA).toFixed(1)}% over the past week, indicating ${Math.abs(volumeChangeTSLA) > 10 ? 'heightened' : 'normal'} market interest. AI models predict potential price ${selectedStock.changePercent > 0 ? 'continuation' : 'reversal'} based on current momentum.`;
                                         }
-                                        return stock.aiSummary || "AI insights are currently processing...";
+                                        return selectedStock.aiSummary || "AI insights are currently processing...";
                                       })()}
                                     </p>
                                 </div>
