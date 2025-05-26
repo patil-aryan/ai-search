@@ -10,7 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StockChart from "./StockChart";
 import { ResponsiveContainer } from "recharts";
-import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
+import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, Line } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface WeatherData {
@@ -535,159 +535,110 @@ const EnhancedHomepage = ({
     }
   };
 
-  // Enhanced crypto data fetching with real API and comprehensive fallback
+  // Fetch crypto data with enhanced error handling and sparkline support
   const fetchCrypto = async () => {
-    // Generate realistic sparkline data with proper volatility
-    const generateRealisticSparkline = (basePrice: number) => {
-      const points = 168; // 7 days * 24 hours
-      const sparkline = [];
-      let currentPrice = basePrice;
-      
-      for (let i = 0; i < points; i++) {
-        // Add realistic market movement
-        const volatility = 0.03; // 3% max change per hour
-        const trendFactor = Math.sin(i / 24) * 0.005; // Daily trend cycle
-        const randomFactor = (Math.random() - 0.5) * volatility;
-        
-        currentPrice = currentPrice * (1 + trendFactor + randomFactor);
-        sparkline.push(Math.max(currentPrice, basePrice * 0.7)); // Prevent extreme dips
-      }
-      
-      return sparkline;
-    };
-
     try {
-      // Try multiple endpoints for better reliability
-      const endpoints = [
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=true&price_change_percentage=24h',
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin,solana,cardano&vs_currencies=usd&include_24hr_change=true'
-      ];
-
-      console.log('Fetching crypto data from multiple sources...');
+      const COINGECKO_API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY;
+      const apiUrl = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=true&price_change_percentage=24h${COINGECKO_API_KEY ? `&x_cg_demo_api_key=${COINGECKO_API_KEY}` : ''}`;
       
-      // Try primary endpoint first
-      let response = await fetch(endpoints[0]);
+      console.log('Fetching crypto data from CoinGecko API...');
+      const response = await fetch(apiUrl);
       
       if (!response.ok) {
-        console.warn(`Primary crypto API failed: ${response.status}, trying fallback...`);
-        // Try simple price endpoint as fallback
-        response = await fetch(endpoints[1]);
+        const errorBody = await response.text();
+        console.warn(`CoinGecko API error: ${response.status} ${errorBody}`);
+        throw new Error(`Crypto API error: ${response.status}`);
       }
       
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Handle different API response formats
-        if (Array.isArray(data) && data.length > 0) {
-          // Full market data response
-          const processedData = data.map(coin => ({
-            ...coin,
-            sparkline_in_7d: coin.sparkline_in_7d || { price: generateRealisticSparkline(coin.current_price) },
-            price_change_percentage_24h: coin.price_change_percentage_24h || (Math.random() - 0.5) * 10
-          }));
-
-          console.log('✅ Successfully fetched full crypto market data:', processedData.length, 'coins');
-          setCrypto(processedData);
-          return;
-        } else if (typeof data === 'object' && data.bitcoin) {
-          // Simple price response - convert to market format
-          const simplePriceData = [
-            {
-              id: 'bitcoin',
-              name: 'Bitcoin',
-              symbol: 'btc',
-              current_price: data.bitcoin.usd,
-              price_change_percentage_24h: data.bitcoin.usd_24h_change || 2.5,
-              market_cap: data.bitcoin.usd * 19700000, // Approximate circulating supply
-              total_volume: data.bitcoin.usd * 500000,
-              image: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',
-              sparkline_in_7d: { price: generateRealisticSparkline(data.bitcoin.usd) }
-            },
-            ...(data.ethereum ? [{
-              id: 'ethereum',
-              name: 'Ethereum',
-              symbol: 'eth',
-              current_price: data.ethereum.usd,
-              price_change_percentage_24h: data.ethereum.usd_24h_change || 1.8,
-              market_cap: data.ethereum.usd * 120000000,
-              total_volume: data.ethereum.usd * 350000,
-              image: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png',
-              sparkline_in_7d: { price: generateRealisticSparkline(data.ethereum.usd) }
-            }] : [])
-          ];
-
-          console.log('✅ Converted simple price data to market format');
-          setCrypto(simplePriceData);
-          return;
-        }
-      }
+      const data = await response.json();
       
-      throw new Error('No valid crypto data received');
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        console.warn('CoinGecko returned empty or invalid data, using fallback');
+        throw new Error('Empty crypto data');
+      }
+
+      // Process and validate the data
+      const processedData = data.map(coin => ({
+        ...coin,
+        sparkline_in_7d: coin.sparkline_in_7d || { price: [] },
+        price_change_percentage_24h: coin.price_change_percentage_24h || 0
+      }));
+
+      console.log('Successfully fetched crypto data:', processedData.length, 'items');
+      setCrypto(processedData);
       
     } catch (error) {
-      console.error('All crypto APIs failed, using enhanced mock data:', error);
+      console.error('Crypto fetch error:', error);
       
-      // Current realistic crypto prices (as of May 2025)
-      const realisticCryptoData = [
+      // Enhanced fallback data with sparkline
+      const generateSparkline = (basePrice: number) => {
+        return Array.from({ length: 168 }, (_, i) => {
+          const volatility = 0.05; // 5% volatility
+          const trend = (Math.random() - 0.5) * 0.002; // Small trend
+          return basePrice * (1 + (Math.random() - 0.5) * volatility + trend * i);
+        });
+      };
+
+      const fallbackCrypto = [
         { 
           id: 'bitcoin', 
           name: 'Bitcoin', 
           symbol: 'btc', 
-          current_price: 109088, // Current real BTC price
-          price_change_percentage_24h: 3.2, 
-          market_cap: 2150000000000, // $2.15T market cap
-          total_volume: 45000000000, 
+          current_price: 67000, 
+          price_change_percentage_24h: 2.1, 
+          market_cap: 1200000000000, 
+          total_volume: 35000000000, 
           image: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png',
-          sparkline_in_7d: { price: generateRealisticSparkline(109088) }
+          sparkline_in_7d: { price: generateSparkline(67000) }
         },
         { 
           id: 'ethereum', 
           name: 'Ethereum', 
           symbol: 'eth', 
-          current_price: 4150, // Realistic ETH price
-          price_change_percentage_24h: 2.8, 
-          market_cap: 500000000000, 
-          total_volume: 25000000000, 
-          image: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png',
-          sparkline_in_7d: { price: generateRealisticSparkline(4150) }
-        },
-        { 
-          id: 'binancecoin', 
-          name: 'BNB', 
-          symbol: 'bnb', 
-          current_price: 720, 
+          current_price: 3200, 
           price_change_percentage_24h: 1.5, 
-          market_cap: 104000000000, 
-          total_volume: 3200000000, 
-          image: 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png',
-          sparkline_in_7d: { price: generateRealisticSparkline(720) }
+          market_cap: 400000000000, 
+          total_volume: 18000000000, 
+          image: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png',
+          sparkline_in_7d: { price: generateSparkline(3200) }
         },
         { 
           id: 'solana', 
           name: 'Solana', 
           symbol: 'sol', 
-          current_price: 245, 
-          price_change_percentage_24h: -1.2, 
-          market_cap: 118000000000, 
-          total_volume: 4800000000, 
+          current_price: 150, 
+          price_change_percentage_24h: -0.8, 
+          market_cap: 65000000000, 
+          total_volume: 2500000000, 
           image: 'https://assets.coingecko.com/coins/images/4128/large/solana.png',
-          sparkline_in_7d: { price: generateRealisticSparkline(245) }
+          sparkline_in_7d: { price: generateSparkline(150) }
+        },
+        { 
+          id: 'binancecoin', 
+          name: 'BNB', 
+          symbol: 'bnb', 
+          current_price: 420, 
+          price_change_percentage_24h: 0.8, 
+          market_cap: 62000000000, 
+          total_volume: 1800000000, 
+          image: 'https://assets.coingecko.com/coins/images/825/large/bnb-icon2_2x.png',
+          sparkline_in_7d: { price: generateSparkline(420) }
         },
         { 
           id: 'cardano', 
           name: 'Cardano', 
           symbol: 'ada', 
-          current_price: 1.25, 
-          price_change_percentage_24h: -0.8, 
-          market_cap: 44000000000, 
-          total_volume: 1200000000, 
+          current_price: 0.45, 
+          price_change_percentage_24h: -1.2, 
+          market_cap: 16000000000, 
+          total_volume: 600000000, 
           image: 'https://assets.coingecko.com/coins/images/975/large/cardano.png',
-          sparkline_in_7d: { price: generateRealisticSparkline(1.25) }
+          sparkline_in_7d: { price: generateSparkline(0.45) }
         }
       ];
       
-      setCrypto(realisticCryptoData);
-      console.log('✅ Set realistic crypto mock data with current BTC price and proper sparklines');
+      setCrypto(fallbackCrypto);
+      console.log('Set enhanced fallback crypto data with sparklines');
     }
   };
 
@@ -784,8 +735,6 @@ const EnhancedHomepage = ({
   };
 
   const CryptoChart = ({ crypto }: { crypto: any[] }) => {
-    console.log('🚀 CryptoChart rendering with data:', crypto?.length || 0, 'coins'); // Debug log
-    
     if (!crypto || crypto.length === 0) {
       return (
         <div className="space-y-4">
@@ -800,76 +749,41 @@ const EnhancedHomepage = ({
 
     // Use the first coin (usually Bitcoin) for the main chart
     const primaryCoin = crypto[0];
-    console.log('📊 Primary coin for chart:', primaryCoin?.name, 'price:', primaryCoin?.current_price); // Debug log
-    
-    // Generate enhanced chart data with better error handling
-    let chartData = [];
-    
-    if (primaryCoin?.sparkline_in_7d?.price && Array.isArray(primaryCoin.sparkline_in_7d.price) && primaryCoin.sparkline_in_7d.price.length > 0) {
-      // Use actual sparkline data (sample every 6-8 hours for cleaner 24-point chart)
+
+    // Prepare chart data (24 points max, evenly sampled)
+    let chartData: { time: string; price: number }[] = [];
+    if (
+      primaryCoin?.sparkline_in_7d?.price &&
+      Array.isArray(primaryCoin.sparkline_in_7d.price) &&
+      primaryCoin.sparkline_in_7d.price.length > 0
+    ) {
       const sparklineData = primaryCoin.sparkline_in_7d.price;
-      const sampleSize = 24; // 24 hours of data
-      const step = Math.max(1, Math.floor(sparklineData.length / sampleSize));
-      
-      chartData = Array.from({ length: sampleSize }, (_, i) => {
-        const dataIndex = Math.min(i * step, sparklineData.length - 1);
-        const price = Number(sparklineData[dataIndex]);
-        return {
-          time: `${i}h`,
-          price: !isNaN(price) && price > 0 ? price : Number(primaryCoin.current_price) || 50000,
-        };
-      });
-      console.log('✅ Using real sparkline data, chart points:', chartData.length, 'sample step:', step); // Debug log
+      const sampleSize = 24;
+      const step = Math.floor(sparklineData.length / sampleSize);
+      chartData = Array.from({ length: sampleSize }, (_, i) => ({
+        time: `${i * Math.floor(24 / sampleSize)}h`,
+        price: Number(sparklineData[i * step]) || Number(primaryCoin.current_price) || 50000,
+      }));
     } else {
-      // Generate realistic historical data based on current price
-      const basePrice = Number(primaryCoin?.current_price) || 109088; // Default to current BTC price
-      console.log('⚠️ Generating realistic chart data, base price:', basePrice); // Debug log
-      
-      chartData = Array.from({ length: 24 }, (_, i) => {
-        // Create realistic price movement over 24 hours
-        const hourlyVolatility = 0.015; // 1.5% max hourly change
-        const trendComponent = Math.sin((i / 24) * Math.PI * 2) * 0.008; // Daily trend cycle
-        const randomComponent = (Math.random() - 0.5) * hourlyVolatility;
-        const priceMultiplier = 1 + trendComponent + randomComponent;
-        
-        return {
-          time: `${i}h`,
-          price: Math.round(basePrice * priceMultiplier * 100) / 100, // Round to 2 decimals
-        };
-      });
+      // fallback
+      const basePrice = Number(primaryCoin?.current_price) || 50000;
+      chartData = Array.from({ length: 24 }, (_, i) => ({
+        time: `${i}h`,
+        price: basePrice * (1 + (Math.random() - 0.5) * 0.02),
+      }));
     }
 
-    // Enhanced data validation with fallback
-    const validData = chartData.filter(point => 
-      point && 
-      typeof point.price === 'number' && 
-      !isNaN(point.price) && 
-      point.price > 0 &&
-      point.time
+    // Validate chart data
+    const validData = chartData.filter(
+      (point) => point && typeof point.price === 'number' && !isNaN(point.price) && point.price > 0
     );
-    
-    // Ensure we always have data to display
     if (validData.length === 0) {
-      console.error('❌ No valid chart data, creating emergency fallback');
-      const fallbackPrice = Number(primaryCoin?.current_price) || 109088;
       validData.push(
-        { time: '0h', price: fallbackPrice * 0.98 },
-        { time: '6h', price: fallbackPrice * 1.01 },
-        { time: '12h', price: fallbackPrice * 0.99 },
-        { time: '18h', price: fallbackPrice * 1.02 },
-        { time: '24h', price: fallbackPrice }
+        { time: '0h', price: 50000 },
+        { time: '12h', price: 51000 },
+        { time: '24h', price: 49500 }
       );
     }
-
-    // Add price range calculation for better Y-axis scaling
-    const prices = validData.map(d => d.price);
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-    const priceRange = maxPrice - minPrice;
-    const paddedMin = Math.max(0, minPrice - priceRange * 0.1);
-    const paddedMax = maxPrice + priceRange * 0.1;
-
-    console.log('📈 Final chart data:', validData.length, 'points, price range:', paddedMin.toFixed(0), '-', paddedMax.toFixed(0)); // Debug
 
     return (
       <div className="space-y-4">
@@ -882,15 +796,15 @@ const EnhancedHomepage = ({
               </CardTitle>
               <div className="text-right">
                 <p className="text-sm font-bold text-blue-700">
-                  ${primaryCoin.current_price < 1 
+                  ${primaryCoin.current_price < 1
                     ? (primaryCoin.current_price || 0).toFixed(4)
                     : (primaryCoin.current_price || 0).toLocaleString()}
                 </p>
-                <Badge 
-                  variant={(primaryCoin.price_change_percentage_24h || 0) >= 0 ? "default" : "destructive"} 
+                <Badge
+                  variant={(primaryCoin.price_change_percentage_24h || 0) >= 0 ? 'default' : 'destructive'}
                   className={`text-[10px] px-1.5 py-0.5 ${
-                    (primaryCoin.price_change_percentage_24h || 0) >= 0 
-                      ? 'bg-green-100 text-green-700 border-green-200' 
+                    (primaryCoin.price_change_percentage_24h || 0) >= 0
+                      ? 'bg-green-100 text-green-700 border-green-200'
                       : 'bg-red-100 text-red-700 border-red-200'
                   }`}
                 >
@@ -901,62 +815,69 @@ const EnhancedHomepage = ({
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="h-32 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={validData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                  <defs>
-                    <linearGradient id="colorCryptoHome" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="time" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 10, fill: '#64748b' }} 
-                    interval="preserveStartEnd" 
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 10, fill: '#64748b' }} 
-                    domain={[paddedMin, paddedMax]}
-                    tickFormatter={(value) => `$${value < 1 ? value.toFixed(4) : Math.round(value).toLocaleString()}`}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e2e8f0', 
-                      borderRadius: '8px', 
-                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                      fontSize: '12px'
-                    }} 
-                    formatter={(value: any) => [
-                      `$${Number(value).toLocaleString(undefined, { 
-                        minimumFractionDigits: primaryCoin.current_price < 1 ? 4 : 2, 
-                        maximumFractionDigits: primaryCoin.current_price < 1 ? 4 : 2 
-                      })}`, 
-                      'Price'
-                    ]} 
-                    labelFormatter={(label) => `Time: ${label}`} 
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="price" 
-                    stroke="#2563eb" 
-                    strokeWidth={2.5} 
-                    fill="url(#colorCryptoHome)" 
-                    dot={false}
-                    activeDot={{ r: 4, strokeWidth: 2, fill: "#2563eb" }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="h-40 w-full flex items-center justify-center">
+              {validData && validData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={validData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorCryptoHome" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="time"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#64748b' }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#64748b' }}
+                      domain={['dataMin', 'dataMax']}
+                      tickFormatter={(value) => `$${Math.round(value)}`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                      }}
+                      formatter={(value: any) => [
+                        `$${Number(value).toFixed((primaryCoin.current_price || 0) < 1 ? 4 : 2)}`,
+                        'Price',
+                      ]}
+                      labelFormatter={(label) => `Time: ${label}`}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="price"
+                      stroke="none" 
+                      fill="url(#colorCryptoHome)"
+                      fillOpacity={0.3} // Make area fill more transparent
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="price"
+                      stroke="#2563eb" 
+                      strokeWidth={2.5} // Increased stroke width slightly
+                      dot={false}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-neutral-400 text-xs">
+                  Chart data unavailable
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
-        
         {/* Other crypto coins grid */}
         <div className="grid grid-cols-2 gap-3">
           {crypto.slice(1, 5).map((coin, idx) => (
@@ -966,11 +887,11 @@ const EnhancedHomepage = ({
                   <span className="font-semibold text-xs text-black truncate">
                     {coin.name || 'Unknown'} ({(coin.symbol || 'N/A').toUpperCase()})
                   </span>
-                  <Badge 
-                    variant={(coin.price_change_percentage_24h || 0) >= 0 ? "default" : "destructive"} 
+                  <Badge
+                    variant={(coin.price_change_percentage_24h || 0) >= 0 ? 'default' : 'destructive'}
                     className={`text-[9px] px-1 py-0.5 ${
-                      (coin.price_change_percentage_24h || 0) >= 0 
-                        ? 'bg-green-100 text-green-700 border-green-200' 
+                      (coin.price_change_percentage_24h || 0) >= 0
+                        ? 'bg-green-100 text-green-700 border-green-200'
                         : 'bg-red-100 text-red-700 border-red-200'
                     }`}
                   >
@@ -980,13 +901,17 @@ const EnhancedHomepage = ({
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="font-bold text-sm text-black">
-                    ${(coin.current_price || 0) < 1 
-                      ? (coin.current_price || 0).toFixed(4) 
+                    ${(coin.current_price || 0) < 1
+                      ? (coin.current_price || 0).toFixed(4)
                       : (coin.current_price || 0).toFixed(2)}
                   </span>
-                  <span className={`text-[10px] font-medium ${
-                    (coin.price_change_percentage_24h || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <span
+                    className={`text-[10px] font-medium ${
+                      (coin.price_change_percentage_24h || 0) >= 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
                     {(coin.price_change_percentage_24h || 0) >= 0 ? '+' : ''}
                     {(coin.price_change_percentage_24h || 0).toFixed(2)}%
                   </span>
