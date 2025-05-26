@@ -4,8 +4,8 @@ import path from "path";
 
 const configFileName = "config.toml";
 
-// Always resolve config.toml from process.cwd(), not relative to __dirname
-const configPath = path.resolve(process.cwd(), configFileName);
+// Resolve config.toml relative to the dist/ directory where compiled code runs
+const configPath = path.resolve(__dirname, '..', configFileName);
 
 interface Config {
   GENERAL: {
