@@ -3,17 +3,17 @@ FROM node:buster-slim
 ARG SEARXNG_API_URL
 ENV SEARXNG_API_URL=${SEARXNG_API_URL}
 
-WORKDIR /home/futuresearch
+WORKDIR /app
 
-COPY src /home/futuresearch/src
+COPY src /app/src
 
-COPY tsconfig.json /home/futuresearch/
-COPY config.toml /home/futuresearch/
-COPY package.json /home/futuresearch/
-COPY package-lock.json /home/futuresearch/
+COPY tsconfig.json /app/
+COPY config.toml /app/
+COPY package.json /app/
+COPY package-lock.json /app/
 
 
-RUN sed -i "s|SEARXNG = \".*\"|SEARXNG = \"${SEARXNG_API_URL}\"|g" /home/futuresearch/config.toml
+RUN sed -i "s|SEARXNG = \".*\"|SEARXNG = \"${SEARXNG_API_URL}\"|g" /app/config.toml
 
 RUN npm install
 RUN npm run build
