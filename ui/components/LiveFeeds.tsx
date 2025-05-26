@@ -26,6 +26,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 interface SportsScore {
   id: string;
@@ -535,6 +536,14 @@ const StockCard: React.FC<{ stock: StockData; index: number }> = ({ stock, index
 const CryptoCard: React.FC<{ crypto: CryptoData; index: number }> = ({ crypto, index }) => {
   const isPositive = crypto.change >= 0;
 
+  // Deterministic mock price history for the chart (24h, hourly)
+  // Simulate a visible up or down trend based on the current change
+  const base = crypto.price - crypto.change;
+  const priceHistory = Array.from({ length: 24 }, (_, i) => ({
+    hour: `${i}h`,
+    price: base + (crypto.change * (i / 23)), // Linear trend from base to current price
+  }));
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -20 }}
@@ -554,7 +563,6 @@ const CryptoCard: React.FC<{ crypto: CryptoData; index: number }> = ({ crypto, i
                 <TrendingDown className="w-4 h-4" />
               )}
             </div>
-            
             <div className="flex-1">
               <div className="flex items-center space-x-2 mb-1">
                 <h3 className="font-semibold text-gray-900">{crypto.symbol}</h3>
@@ -565,8 +573,18 @@ const CryptoCard: React.FC<{ crypto: CryptoData; index: number }> = ({ crypto, i
                   {crypto.marketCap}
                 </Badge>
               </div>
-              
               <p className="text-sm text-gray-600 mb-2">{crypto.name}</p>
+              {/* Chart */}
+              <div className="w-full h-28 mb-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={priceHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="hour" hide />
+                    <YAxis domain={[(dataMin: number) => Math.floor(dataMin * 0.99), (dataMax: number) => Math.ceil(dataMax * 1.01)]} hide />
+                    <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                    <Line type="monotone" dataKey="price" stroke={isPositive ? "#22c55e" : "#ef4444"} strokeWidth={2.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
               
               {crypto.aiInsight && (
                 <div className="bg-blue-50 rounded-lg p-3 mb-2">
@@ -654,4 +672,4 @@ const formatCryptoVolume = (volume: number) => {
   return volume.toString();
 };
 
-export default LiveFeeds; 
+export default LiveFeeds;
