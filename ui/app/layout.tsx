@@ -18,11 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html className="h-full" lang="en">
+      <head>
+        <link rel="icon" href="/favicon.png" type="image/png" />
+      </head>
       <body className={`${inter.className} h-full`}>
         <FloatingNavbar />
-        <main className="h-full">
-          {children}
-        </main>
+        <main className="h-full">{children}</main>
       </body>
     </html>
   );
