@@ -1,13 +1,1 @@
-[GENERAL]
-CHAT_MODEL_PROVIDER = "gemini"
-CHAT_MODEL = "gemini-2.0-flash"
-PORT = 3_001 
-SIMILARITY_MEASURE = "cosine"
 
-[API_KEYS]
-GEMINI = ["AIzaSyAMmjz_a04SMAYAGnsyVZxkBIZAe2_D0aw", "AIzaSyCZakWYeKUndcWS1V2368WhmIZKdyOk0-w", "AIzaSyAXv4-OQg4GBLsdE1yWqUG4D3RdCaMomjg"]
-SEARXNG_SECRET = "a2fb23f1b02e6ee83875b09826990de0f6bd908b6638e8c10277d415f6ab852b"
-
-[API_ENDPOINTS]
-OLLAMA = ""
-SEARXNG = "http://localhost:4000" # Use localhost for development, Docker maps to port 4000
