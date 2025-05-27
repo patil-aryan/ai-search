@@ -28,46 +28,64 @@ interface Config {
 
 let currentKeyIndex = 0;
 
-const loadConfig = () =>
-  toml.parse(
-    fs.readFileSync(configPath, "utf-8")
-  ) as any as Config;
+const configExists = fs.existsSync(configPath);
 
-export const getPort = () => loadConfig().GENERAL.PORT;
+const loadConfig = () => {
+  if (!configExists) {
+    throw new Error(
+      'No config.toml found and no environment variables set. Please set environment variables for all required secrets and config.'
+    );
+  }
+  return toml.parse(fs.readFileSync(configPath, "utf-8")) as any as Config;
+};
+
+const getEnvOrConfig = <T>(envKey: string, fallback: () => T, isArray = false): T => {
+  const envValue = process.env[envKey];
+  if (envValue !== undefined) {
+    if (isArray) {
+      return envValue.split(',').map((v) => v.trim()) as any as T;
+    }
+    return envValue as any as T;
+  }
+  if (configExists) return fallback();
+  throw new Error(`Missing required config: ${envKey}`);
+};
+
+export const getPort = () => Number(process.env.PORT) || (configExists ? loadConfig().GENERAL.PORT : 3001);
 
 export const getSimilarityMeasure = () =>
-  loadConfig().GENERAL.SIMILARITY_MEASURE;
+  getEnvOrConfig('SIMILARITY_MEASURE', () => loadConfig().GENERAL.SIMILARITY_MEASURE);
 
 export const getChatModelProvider = () =>
-  loadConfig().GENERAL.CHAT_MODEL_PROVIDER;
+  getEnvOrConfig('CHAT_MODEL_PROVIDER', () => loadConfig().GENERAL.CHAT_MODEL_PROVIDER);
 
-export const getOllamaApiEndpoint = () => loadConfig().API_ENDPOINTS.OLLAMA;
+export const getOllamaApiEndpoint = () =>
+  getEnvOrConfig('OLLAMA_API_URL', () => loadConfig().API_ENDPOINTS.OLLAMA);
 
-export const getChatModel = () => loadConfig().GENERAL.CHAT_MODEL;
+export const getChatModel = () =>
+  getEnvOrConfig('CHAT_MODEL', () => loadConfig().GENERAL.CHAT_MODEL);
 
-export const getOpenaiApiKey = () => loadConfig().API_KEYS.OPENAI;
+export const getOpenaiApiKey = () =>
+  getEnvOrConfig('OPENAI_API_KEY', () => loadConfig().API_KEYS.OPENAI);
 
-export const getGroqApiKey = () => loadConfig().API_KEYS.GROQ;
+export const getGroqApiKey = () =>
+  getEnvOrConfig('GROQ_API_KEY', () => loadConfig().API_KEYS.GROQ);
 
 // Enhanced Gemini API key management with load balancing and failover
 export const getGeminiApiKey = () => {
-  const config = loadConfig();
-  const geminiKeys = config.API_KEYS.GEMINI;
-  
+  const geminiKeys = getEnvOrConfig('GEMINI_API_KEYS', () => loadConfig().API_KEYS.GEMINI, true);
   if (Array.isArray(geminiKeys)) {
     // Round-robin load balancing
     const selectedKey = geminiKeys[currentKeyIndex % geminiKeys.length];
     currentKeyIndex = (currentKeyIndex + 1) % geminiKeys.length;
     return selectedKey;
   }
-  
   return geminiKeys; // Single key fallback
 };
 
 // Get all Gemini keys for failover scenarios
 export const getAllGeminiApiKeys = () => {
-  const config = loadConfig();
-  const geminiKeys = config.API_KEYS.GEMINI;
+  const geminiKeys = getEnvOrConfig('GEMINI_API_KEYS', () => loadConfig().API_KEYS.GEMINI, true);
   return Array.isArray(geminiKeys) ? geminiKeys : [geminiKeys];
 };
 
@@ -77,10 +95,11 @@ export const getGeminiApiKeyByIndex = (index: number) => {
   return keys[index % keys.length];
 };
 
-export const getSearxngApiEndpoint = () => loadConfig().API_ENDPOINTS.SEARXNG;
+export const getSearxngApiEndpoint = () =>
+  getEnvOrConfig('SEARXNG_API_URL', () => loadConfig().API_ENDPOINTS.SEARXNG);
 
 export const getSearxngSecretKey = (): string | undefined => {
-  return loadConfig().API_KEYS.SEARXNG_SECRET;
+  return getEnvOrConfig('SEARXNG_SECRET', () => loadConfig().API_KEYS.SEARXNG_SECRET);
 };
 
 type RecursivePartial<T> = {

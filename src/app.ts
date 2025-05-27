@@ -10,8 +10,9 @@ const port = getPort();
 const app = express();
 const server = http.createServer(app);
 
+const allowedOrigin = process.env.FRONTEND_ORIGIN || "*";
 const corsOptions = {
-  origin: "*",
+  origin: allowedOrigin,
 };
 
 app.use(cors(corsOptions));
